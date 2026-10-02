@@ -4,8 +4,8 @@ sidebar_position: 7
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 8
-  cairn_release: "2.6.0"
+  cairn_version: 9
+  cairn_release: "2.7.0"
 ---
 
 # 0007 — Push authority is pre-authorized at staging, never assumed

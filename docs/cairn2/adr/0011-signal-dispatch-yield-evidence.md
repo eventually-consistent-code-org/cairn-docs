@@ -4,8 +4,8 @@ sidebar_position: 11
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 3
-  cairn_release: "2.6.0"
+  cairn_version: 4
+  cairn_release: "2.7.0"
 ---
 
 # 0011 — Signals pick the seats; yield evidence retires them; blast radius always wins

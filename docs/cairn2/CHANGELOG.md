@@ -4,18 +4,76 @@ sidebar_position: 13
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 3
-  cairn_release: "2.6.0"
+  cairn_version: 4
+  cairn_release: "2.7.0"
 ---
 
 # Changelog
 
-## Unreleased — harness hygiene
+## Unreleased — measured actuals
 
-Eight mechanics that turn cairn's own rules about itself into gates and
-measurements. Every one of them is something the harness now enforces on
-itself rather than something the documentation asks people to remember.
-Tool count holds at 85; the suite grows 1412 → 1465.
+Every closed task used to record a duration the agent made up, and the
+ones checked against tracker timestamps ran six to fourteen times high.
+That isn't a discipline problem: a model has no reliable sense of its own
+elapsed time, so asking more firmly can't fix it. The server now measures
+duration from timestamps it already controls and labels where each
+number came from. The agent's figure survives as a claim, stored beside
+the measurement instead of replacing it. Tool count holds at 87; the
+suite grows 1605 → 1630.
+
+### measured actuals
+
+- The server measures how long a task took, down a fixed ladder, and
+  records which rung produced the number: the claim comment's timestamp
+  to the close, where the backend can list comments; otherwise the moment
+  the server itself saw the issue go in progress; otherwise the first to
+  last commit across the task's commits; otherwise nothing, recorded as
+  nothing. The rungs measure different spans, and the label is what stops
+  a later reader pooling them as if they were one measurement.
+- A claim comment is recognised strictly, by a first line that opens
+  "Starting now". A missed hand-written claim only drops the measurement
+  one rung. A loose match would start the clock early and inflate the
+  very number this replaces. On both of the first two rungs the earliest
+  claim wins, so a task picked back up after a pause still measures from
+  its first pickup.
+- The agent's own time is kept as a claim beside the measurement, and the
+  gap between the two is kept on purpose, because it says something about
+  the reporter. Worklogs on backends that support them get the measured
+  minutes. The close comment carries the measurement and its source in
+  the same comment as the test evidence.
+- Closing an issue and writing its ledger line happen in two different
+  tools, and each held half of the record. The close now leaves a small
+  local receipt with the estimate it saw (each number tagged as a real
+  tracker field or a line scraped from the issue body), the claimed
+  minutes and the worklog outcome. The ledger append folds the receipt
+  into one short actuals segment on the line, then deletes it. Receipts
+  live in a folder that ignores itself, so no repo ever commits one.
+- A missing receipt never costs the line. It is written anyway with a
+  named degraded marker instead of silent blanks, and the duration still
+  comes from git. Nothing about receipts can fail a close or an append,
+  and an append the ledger refuses leaves its receipt in place for the
+  retry.
+- The work, trace, fast and audit procedures open claims with "Starting
+  now." and no longer ask the agent for a time spent.
+
+## v2.7.0 — the guards (2026-09-20)
+
+The second half of milestone v8, and the half that turns rules about
+cairn into mechanisms cairn enforces on itself. Three hooks that refuse
+rather than advise, architecture rules asserted instead of merely
+documented, a context budget that is measured, tasks that declare how
+they will be proved, and memory that audits, compacts and announces its
+own state. Two long-standing measurement defects are fixed underneath
+all of it: the metrics log stopped destroying its own history, and the
+timing tests stopped reporting machine load as a regression.
+
+One principle surfaced independently three times across these two
+phases and is now written down as a decision record: a check that
+cannot fail is worse than no check. Every guard added here is proven by
+breaking the thing it guards.
+
+Tool count moves 85 → 86 — the first addition in three milestones, a
+deliberate exception recorded with its reasoning. Suite 1412 → 1541.
 
 ### harness hygiene
 
@@ -70,6 +128,80 @@ Tool count holds at 85; the suite grows 1412 → 1465.
 - The same tool called with the same input three times in a row draws one
   advisory line. Once, not on every call after — the point is to be
   noticed, not to nag a legitimate repetition into the ground.
+
+
+### memory hygiene
+
+- The card store can now be audited, and the finding it exists for is the
+  one you could not otherwise see. A card whose frontmatter will not parse
+  is skipped silently by both listing and recall, so a corrupted card
+  disappears from every surface without announcing itself and the store
+  looks healthy precisely because the broken card is invisible. The audit
+  reads every file directly and reports what the normal path drops, along
+  with provenance whose file is gone or whose commit no longer resolves,
+  near-duplicate bodies and aged cards. It reads files and git rather than
+  the search index, deliberately: that index needs a compiled binding that
+  can be missing, and an audit that dies exactly when memory is unhealthy
+  would be the wrong shape.
+- The capacity guard gained an action. Aged low-confidence cards merge
+  into one dated archive whose provenance lists the retired cards'
+  commits — rotation without time decay. The archive is written before
+  anything is retired, so a failure leaves the store whole; the approved
+  identifiers are applied exactly, never re-derived at write time, so a
+  card that ages between the proposal and the approval is never swept in
+  without being seen; and an archive cannot itself be archived, which is
+  guarded twice because the first guard is an implicit coupling.
+- Memory announces its own backlog. The unreviewed observation count and
+  the age of the oldest entry surface in the statistics and, past a
+  configurable threshold, in the session banner. Capture stays passive and
+  review stays gated behind the retrospective — the buffer simply stops
+  growing in silence.
+- The cost tracker records report bytes per fan-out, measured against peak
+  single-request tokens rather than cumulative totals. With prompt caching
+  those totals count the same replayed prefix over and over: one real
+  session summed to nearly a billion cached tokens against a window that
+  never exceeded a million, which understated the share twentyfold. This
+  is measurement only. Whether compression is worth building is the
+  question it exists to answer.
+- The metrics log rotates instead of truncating. It previously capped
+  itself at five thousand lines and cut back to twenty-five hundred, which
+  is not a retention policy but amnesia with a ratchet, and it bit hardest
+  on the busiest projects. Segments now close by rename and are never
+  rewritten, readers merge them oldest-first to the latest row per
+  session rather than summing, and pruning happens by age and supersession
+  rather than by line count.
+- Estimates stop losing half of themselves. The prose fallback that
+  rescues estimates on backends without native fields was capturing both
+  the points and the hours and discarding the hours — which is why there
+  was a points corpus and no minutes corpus at all. The hours now survive,
+  carried with their provenance, because a real tracker field and a scrape
+  of prose are not the same evidence and pooling them is how a calibration
+  curve gets fitted to a parser bug.
+- Jira stops dropping story points in silence. It discovers that field at
+  runtime, and when no field matched it warned once to the error stream
+  and dropped the value while still reporting full estimate support. The
+  loss now reaches the caller as a partial skip, so the fallback runs and
+  the estimate survives in the issue body.
+- Roadmap status became computed rather than remembered. Drift repairs a
+  verified phase's row in place and milestone completion patches the rest,
+  so the table stops sitting at "planned" until somebody notices.
+- Timing tests measure the subject instead of the machine. A pair of
+  hundred-millisecond budgets were timing a spawned interpreter: a bare
+  process start is thirty-one milliseconds and the hook under test is
+  thirty-two, so the budget was almost entirely startup. It failed a
+  release gate on a shared runner and flaked repeatedly on loaded
+  machines, reporting load as though it were a regression. Both now
+  measure the marginal cost over a baseline spawn, minimum of five
+  samples, and were proven in both directions — they catch an injected
+  slowdown and survive eight saturating load generators.
+- Smaller debts: the native-binding error names the directory the module
+  actually resolves from and distinguishes a dependency never compiled
+  here from one built for a different runtime, which need different
+  instructions; three verb documents stopped implying the index tool reads
+  a file; dispatch briefs render their invariants last, where attention is
+  most reliable, and keep dated content out of the cacheable prefix; and
+  the design-alternatives gate stops asking already-verified phases for a
+  block they no longer owe.
 
 ## v2.6.0 — the refutation (2026-09-17)
 

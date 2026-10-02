@@ -4,8 +4,8 @@ sidebar_position: 13
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.6.0"
+  cairn_version: 5
+  cairn_release: "2.7.0"
 ---
 
 # Case study: the first headless batch run — seven fixes in 22 minutes, and the budget meter read zero

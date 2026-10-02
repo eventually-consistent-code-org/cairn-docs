@@ -4,8 +4,8 @@ sidebar_position: 2
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 8
-  cairn_release: "2.6.0"
+  cairn_version: 9
+  cairn_release: "2.7.0"
 ---
 
 # cairn Runbook — the complete operating manual
@@ -78,7 +78,7 @@ decision, which stops for you).
 | Five-axis code review of a diff, branch, or phase | `/cairn:review [target]` |
 | Sweep open issues for hygiene problems | `/cairn:triage` |
 | Build/query the project knowledge graph | `/cairn:map build` |
-| Check the planning directory's own health, repair, or forensics | `/cairn:medic` |
+| Check the planning directory's own health (and plugin state), repair, or forensics | `/cairn:medic` |
 | Safely revert a phase's shipped commits (reverts only) | `/cairn:backtrack <phase>` |
 | Manage multi-project workspaces and the dispatch board | `/cairn:basecamp` |
 | See every cairn project on this machine on one board | `/cairn:outlook` |
@@ -265,6 +265,10 @@ merely have its tasks closed.
    public docs owe — "docs owe entries for phases X, Y —
    `/cairn:distill <N>` generates them". Report only: verify never
    generates docs, and a drift-report error never fails the verification.
+   It also confirms the phase's row in `roadmap.md` reads `verified`, and
+   repairs the row if it still reads `planned` — the roadmap is the table
+   people actually read, so it is not allowed to disagree with the
+   VERIFICATION.md sitting next to it. A failed verify leaves the row alone.
 7. **A failed verification routes to `trace` — mandatory.** Open a trace with
    the failure as the description, log the failing output as the first
    evidence entry, and continue there. Never patch-and-rerun inline.
@@ -282,7 +286,10 @@ The pre-push gate:
 
 1. Drift check — anything flagged: stop and report. Do not push.
 2. Every phase with a VERIFICATION.md must show all its issues closed
-   (spot-checked live) — any still open: stop.
+   (spot-checked live) — any still open: stop. A stale `planned` roadmap
+   row on one of those phases is repaired with the plan-doc commit, not
+   treated as a failed gate. Ship never writes `shipped (v<N>)` into a
+   row — that flip is `summit`'s, at the milestone archive.
 3. Engineer mode only: no cairn-authored PR may still be awaiting human
    review. Human review is the merge gate; ship never overrides it.
 4. Docs catch-up: any verified phase the docs-drift report still flags
@@ -752,7 +759,11 @@ doctor. Bare `medic`: plan status, drift, plan checks, and ledger/file
 cross-checks (does every phase have its ledger, plan, and directory? do
 ledger commits still exist? a phase marked verified with no ledger evidence
 is a finding, not a pass), ranked by what breaks next if ignored, closed
-with a record. `--repair`, only after the health record exists, makes
+with a record. It also checks **plugin state** — the triple of installed
+version, marketplace pin, and running server — because a stale or
+orphaned plugin is the one health problem that makes every other check
+lie to you (details in section 11's "Running an older cairn than you
+think"). `--repair`, only after the health record exists, makes
 exactly three mechanical moves: ensure a missing phase's tracker object,
 scaffold missing files, relink stale plan↔issue links. **Structure, never
 content**: it never rewrites what a plan says, never resolves a drift
@@ -1409,6 +1420,22 @@ recommendation is to split the active issue into sub-tasks rather than
 piling more work into one context. Advisory means advisory — the tool can't
 pause you; you act on the signal.
 
+**Observation backlog.** The PostToolUse observe hook appends a row per
+Edit/Write/Bash call to `.cairn/observations/observations.jsonl`, and retro
+is the only thing that ever reads or clears it. Left alone, that buffer
+grows until the hook's retention cap quietly drops the oldest half — work
+nobody reviewed, gone without a word. So memory announces its own state:
+`mem_stats` returns an `observations` block (row count, oldest-entry age in
+days, the threshold), and once the count reaches
+`memory.observationWarnThreshold` (default 25) the recall banner carries a
+line directly under its header — `N unreviewed observations (oldest Xd) —
+run retro`. A backlog past the line is enough to render the banner on its
+own, because the session with no cards and no open sessions is exactly the
+one that has never run retro. Capture stays passive and review stays
+retro-gated; the counter only refuses to let the pile grow invisibly. Like
+the card audit, it reads one plain file, so a broken index binding never
+hides the warning.
+
 One care-and-feeding note: cards are git-committed, so treat them like
 code — review, PR, don't hand-edit frontmatter into malformed shapes. A
 malformed card silently drops out of recall rather than erroring; check
@@ -1555,6 +1582,29 @@ sharing a named symbol with a producer's but not matching it) and
 99.9%` — with no benchmark, fixture, spec, or measurement anchor nearby).
 Deterministically ordered, byte-equal across runs on an unchanged tree.
 
+**`audit memory` audits the card store**, and the finding it exists for is
+the one you cannot otherwise see. A card whose frontmatter will not parse
+is skipped silently by both `mem_card_list` and recall, so it disappears
+from every surface without announcing itself — the store looks healthy
+precisely because the broken card is invisible. The mode reads every file
+directly and reports what the normal path is hiding, alongside provenance
+whose file is gone or whose commit no longer resolves, near-duplicate card
+bodies, aged low-confidence cards, and counts by type and confidence.
+
+Severity follows the damage. A malformed card is important, because it is
+rot you would never otherwise find. Broken provenance is important when the
+file is gone and minor when only the commit is unresolvable. Near-duplicates
+and aged cards are minor and route to retro's compaction rather than to a
+fix in the audit — card bodies are immutable, so a correction is always a
+new card, never an edit.
+
+The evidence arrives under `cards` from `mem_stats` and is computed from
+plain files and git, deliberately not from the search index. The index needs
+a compiled native binding, and a plugin cache installed under a newer node
+runtime ships without one; an audit that died exactly when memory was
+unhealthy would be the wrong shape. If `indexUnavailable` appears beside the
+card block, the index is down and the card audit still ran.
+
 ### Peers
 
 External AI CLIs as reviewers, with three hard properties: cairn's own
@@ -1647,6 +1697,7 @@ nothing.
 | `docs.config` | object | — | Connector config: `baseUrl`, `spaceKey`, `emailEnv` (default `CONFLUENCE_EMAIL`), `tokenEnv` (default `CONFLUENCE_API_TOKEN`) |
 | `agents.model` | `auto \| inherit \| haiku \| sonnet \| opus` | `auto` | Model routing for agent fan-out. `inherit` = session model everywhere; an explicit value pins everything; `auto` routes per work class: mechanical → fast tier, synthesis → session tier, judgment gates → strongest. Blast-radius rule: output that gates verify/ship routes UP, never down; uncertain → inherit |
 | `memory.tokenThreshold` | positive integer | `150000` | The capacity-guard advisory line for the memory index |
+| `memory.observationWarnThreshold` | positive integer | `25` | Unreviewed observation rows before the banner says "run retro" |
 | `user.handle` | non-empty string | *(optional)* | Your tracker identity — enables ownership tracking, claiming, skip-others'-work |
 | `user.mode` | `vibe \| engineer` | absent ≡ `vibe` | Collaboration posture (section 9). Engineer requires `handle` |
 | `continuity.resume` | `prompt \| auto \| off` | `prompt` | Session-start resume behavior: ask, proceed, or suppress |
@@ -1797,7 +1848,7 @@ stack traces.
 | `HANDOFF_INVALID` | The continuity handoff file is malformed | Inspect or discard it; a fresh checkpoint rewrites it |
 | `HANDOFF_STALE` | The handoff is too old to trust | Inspect or discard — stale handoffs are never auto-resumed |
 | `UNSUPPORTED` | The operation isn't valid here — e.g. an invalid node/edge type in a map patch, or a capability the backend doesn't have | Use a supported type/path; capability differences are in section 4 |
-| `NATIVE_MODULE_BROKEN` | The better-sqlite3 compiled binding is missing or built for a different node ABI — memory *index* tools (`mem_index`/`mem_search`/`mem_stats`/`mem_timeline`) fail; card tools keep working | Run the command in the message: `cd <server dir> && npm rebuild better-sqlite3`, then reload plugins (or restart the session) so the server picks up the new binding — `config_probe` reports the same fix preemptively |
+| `NATIVE_MODULE_BROKEN` | The better-sqlite3 compiled binding is missing (never compiled in this install) or built for a different node ABI — memory *index* tools (`mem_index`/`mem_search`/`mem_stats`/`mem_timeline`) fail; card tools keep working | Run the command in the message: `cd <install root> && npm rebuild better-sqlite3`, then open `/plugin` and close it — plugin changes apply on menu close — or restart the session, so the server picks up the new binding. The directory is derived from where better-sqlite3 actually resolves from — the install root, **not** the plugin cache's `server/` — so paste it as given. The message names which of the two modes you hit; `config_probe` reports both preemptively (`native.kind`) |
 | `PRECONDITION_FAILED` | The operation's gate isn't satisfied — unverified phases at summit, closing a session without its gate entry, starting a duplicate open session, a map patch with dangling edges, board writes without a workspace, a peer that isn't on PATH / is disabled / timed out | The message names the gate. Satisfy it and re-run — these operations are built to be safely re-runnable |
 
 ### Common failure scenarios
@@ -1835,15 +1886,62 @@ fix; a lost claim race means back off and pick different work.
 
 **Memory tools fail with `NATIVE_MODULE_BROKEN`.** Symptom: every
 `mem_index`/`mem_search`/`mem_stats`/`mem_timeline` call fails (card tools
-still work). Cause: a freshly installed plugin cache under a newer node ABI
-ships no compiled better-sqlite3 binding — nothing you did wrong. Fix: run
-the exact command in the error message —
-`cd <server dir> && npm rebuild better-sqlite3` — once, then retry.
-The rebuild alone isn't enough — reload plugins (or restart the session)
-so the server picks up the new binding; a running server keeps failing on
-its cached load until you do.
+still work). Nothing you did wrong. The error names one of two modes,
+because they are not the same problem:
+
+- **no compiled binding in this install** — nothing was ever built here. A
+  freshly installed plugin cache ships no compiled better-sqlite3, and the
+  runtime deps live at the cache **root**, so there is no `server/node_modules`
+  to rebuild in. If npm reports nothing to rebuild, the dependency isn't
+  installed at that root at all — `npm install` there first, then rebuild.
+- **built for a different runtime** — a binding exists but targets another
+  node ABI (or another platform). The rebuild re-targets it.
+
+Fix, both modes: run the exact command in the error message —
+`cd <install root> && npm rebuild better-sqlite3` — once, then retry. The
+directory is derived from where better-sqlite3 actually resolves from, never
+hardcoded, so paste it as given rather than guessing at `server/`.
+The rebuild alone isn't enough — open `/plugin` and close it again
+(plugin changes apply on menu close), or restart the session, so the
+server picks up the new binding; a running server keeps failing on its
+cached load until you do.
 `config_probe` reports the same thing up front as an advisory `native` line
-(ok / broken + fix), so a preflight catches it before any memory call does.
+(ok / broken + `kind` + fix), so a preflight catches it before any memory
+call does.
+
+**Running an older cairn than you think.** Symptom: a verb documents a
+tool the session can't call, or a fix you know landed doesn't take. Cause:
+the plugin you're running is not the source you're reading. Three numbers
+settle it, and `/cairn:medic` reports them as one finding:
+
+| The number | Where it comes from |
+|---|---|
+| installed version | `claude plugin list --json` — the entry's `version` and the cache path it runs from; `config_probe` reports the same pair from inside the server |
+| marketplace pin | `.claude-plugin/marketplace.json` → the plugin's `source.ref` — the release tag an install or update actually fetches |
+| running server | `config_probe`'s version line, against `git describe --tags` in the source tree you're editing |
+
+The nasty case is the one where all three version *strings* agree and the
+plugin is still stale: `git describe --tags` reads `vX.Y.Z-<n>-g<sha>`
+with `<n>` above zero, meaning the working tree is `<n>` commits past the
+tag the pin names. Installed = released by design (see the README's dev
+mode vs installed plugin note), so everything merged since that tag is
+invisible to the session even though no version number disagrees. Version
+equality is not freshness. The other two cases are louder: installed
+version ≠ pin means an update was never adopted, and an installed plugin
+whose marketplace has vanished from `claude plugin marketplace list` is
+orphaned — nothing can update it, because `update` has no source to fetch
+from.
+
+Fix: `/plugin` → update → close the menu; plugin changes apply on menu
+close, no reload step and no restart. Where there's no TTY to answer the
+consent prompt — a headless run, CI, a batch job — the mutating
+subcommands take `-y` (`claude plugin install <plugin>@<marketplace> -y`,
+and the same on `update` and `uninstall`), which accepts the
+marketplace-declared command without prompting and is *required* when
+stdin or stdout isn't a TTY. Read state with `claude plugin list --json`
+rather than scraping the human output; which other subcommands emit JSON
+moves with the Claude Code version, so `--help` is the authority, not this
+table.
 
 **Planning directory looks wrong.** `/cairn:medic` for the diagnosis,
 `medic --repair` for the mechanical subset, `medic forensics <phase>` when

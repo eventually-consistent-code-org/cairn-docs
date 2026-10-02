@@ -4,8 +4,8 @@ sidebar_position: 17
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 2
-  cairn_release: "2.6.0"
+  cairn_version: 3
+  cairn_release: "2.7.0"
 ---
 
 # 0017 — Declared checks report a mismatch; they do not refuse it

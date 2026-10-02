@@ -4,8 +4,8 @@ sidebar_position: 12
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 3
-  cairn_release: "2.6.0"
+  cairn_version: 4
+  cairn_release: "2.7.0"
 ---
 
 # Architecture
@@ -57,7 +57,7 @@ reason.
   budget ledger enforcing the ceiling at phase/wave boundaries (ADR
   0008).
 
-  The plan↔tracker drift report has grown five reasons, and they are not
+  The plan↔tracker drift report has grown six reasons, and they are not
   all the same kind of thing. Two are errors the scan must not let pass:
   an issue the plan names that the tracker has lost, and an issue closed
   inside a phase nothing has verified. One is a staleness claim — the
@@ -67,13 +67,36 @@ reason.
   commit naming it, or a branch whose last commit has aged past the
   window. Advisory means neither stops a ship nor fails a verification;
   forgotten work is worth seeing and is never a reason to block a good
-  push.
+  push. The sixth is a repair rather than a complaint: the roadmap's
+  Status column was the last piece of plan state nothing computed — only
+  the route verb ever wrote a cell, by hand, so a phase could sit
+  verified for a week with its row still reading "planned". The scan now
+  patches that cell from the evidence on disk (a phase directory holding
+  VERIFICATION.md) and reports what it changed, the same posture every
+  other drift class already has; milestone completion sets the shipped
+  rows from the same event that archives their directories. Narrow on
+  both sides by design — only a cell still saying exactly "planned"
+  moves, and only for a row the table already holds, because overwriting
+  a human's wording or inventing rows would be a worse bug than the one
+  being fixed.
 
   Two sibling scans sit beside it. `docs_drift` reports which verified
   phases the published documentation has not caught up with. The
   plan-quality scan reports contract drift, unanchored thresholds, a
   phase that never wrote down its design alternatives, and a task that
   never declared how it would be proved.
+
+  Closing a task measures it as well. The close derives the duration
+  from timestamps it already controls (the claim comment, else the
+  claim the server saw) and leaves a local receipt carrying that
+  measurement with its source, the estimate with each number's
+  provenance, and the caller's own figure as a claim. The ledger
+  append consumes the receipt into one key=value segment on the line,
+  and falls back to git dates across the commit range when the close
+  measured nothing, since it is the only tool holding that range. A
+  missing receipt is written as a named degraded marker, never as
+  blanks, and no part of this can fail a close or an append (ADRs 0020,
+  0021).
 - `memory/` — disposable FTS index + git-committed memory cards with
   provenance, staleness checking, and phase/issue/role scopes.
 - `docs/` — documentation connectors (below) plus the marked-section
@@ -183,7 +206,11 @@ review's classic axes byte-identically until a project overrides them
   categories and honesty line at standard, full anchors at full; an
   optional role-memory section ("what this seat remembers", stale
   cards marked) renders when the seat has role-scoped cards
-  (ADR 0014) and is byte-absent otherwise.
+  (ADR 0014) and is byte-absent otherwise. Section order is the
+  template's and is load-bearing: static framing first (the prefix a
+  provider can cache across a wave), then issue and plan, then the
+  dated memory section, and the standing rules LAST at the recency
+  end of the window.
 - **Dispatch** (`server/src/seats/signals.ts`, `yield.ts`) —
   diff-derived scope signals select firing seats (opt-in per seat,
   full-panel off dial is the default); a persisted per-seat yield

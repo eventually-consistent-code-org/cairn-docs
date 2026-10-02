@@ -4,8 +4,8 @@ sidebar_position: 18
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 8
-  cairn_release: "2.6.0"
+  cairn_version: 9
+  cairn_release: "2.7.0"
 ---
 
 # Docusaurus docs connector — design
