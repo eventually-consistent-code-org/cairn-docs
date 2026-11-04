@@ -4,13 +4,16 @@ sidebar_position: 14
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.7.0"
+  cairn_version: 9
+  cairn_release: "2.9.2"
 ---
 
 # 0014 — Role-scoped memory reuses the card store, not a persona store
 
 Date: 2026-09-13. Status: accepted.
+
+removeWhen: the platform ships per-agent persistent memory with provenance and staleness that cairn can read, write and filter by role, making the role scope a second store.
+derives: axiom 2 (mechanism-vs-judgment)
 
 ## Context
 

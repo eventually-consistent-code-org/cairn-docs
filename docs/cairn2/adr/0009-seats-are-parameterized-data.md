@@ -4,13 +4,16 @@ sidebar_position: 9
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.7.0"
+  cairn_version: 9
+  cairn_release: "2.9.2"
 ---
 
 # 0009 — Seats are parameterized data with a server-validated dose
 
 Date: 2026-09-11. Status: accepted.
+
+removeWhen: the server-validated dose can go once models reliably size a viewpoint brief themselves, shown by minimal and full doses of the same seat producing equivalent findings across a milestone. Seats-as-data itself is permanent.
+derives: axiom 2 (mechanism-vs-judgment)
 
 ## Context
 

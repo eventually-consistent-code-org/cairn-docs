@@ -4,8 +4,8 @@ sidebar_position: 2
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # cairn Runbook — the complete operating manual
@@ -37,6 +37,22 @@ and the rest of the system makes sense:
 | **Work truth** | Your external tracker (GitHub, GitLab, Jira, Asana, Azure Boards, ClickUp, Linear, or the local backend) | Issues, states, assignees, milestones — the single source of truth for *work items* |
 | **Prose truth** | Git, inside your repo | Plans, phase context, verification records, memory cards, session files — everything written down |
 | **Disposable cache** | `~/.cairn/` on your machine | The full-text memory index, the session handoff, the recall banner — rebuildable, never git-tracked, safe to delete |
+
+**Worktrees share the cache, except for the task in flight.** Run cairn in
+several worktrees of one repository (a wave of parallel workers, or you
+beside a batch run) and they read one memory index, append to one metrics
+log and one observation log, count against one budget and one refusal log,
+and see the same run manifests: those files are keyed by the repository
+(`git rev-parse --git-common-dir`), not the folder. Only the handoff, the
+recall banner and the active phase/issue stay per worktree, because each
+checkout is its own task in flight. So a `retro` run from the main checkout
+reviews what the wave workers' hooks observed, and a memory index built
+once serves every worktree. Upgrading from an older cairn moves each file
+from its old per-folder name the first time it is used, once, and logs
+the move as one `rekey` row on the metrics log; an observation log kept in
+`.cairn/observations/` inside the checkout moves to the cairn home the same
+way. A folder that is not a git repository keeps exactly the old per-folder
+key. The full table is in ARCHITECTURE.md, "Per-machine state".
 
 On conflict, git plan docs (CONTEXT.md, PLAN.md) win over tracker issue text —
 cairn updates the issue rather than silently following it. One exception:
@@ -75,6 +91,7 @@ decision, which stops for you).
 | Compare design variants on a shared theme | `/cairn:draft "<question>"` |
 | Keep long-running context alive across `/clear` | `/cairn:thread "<name>"` |
 | Run a cross-phase quality audit (uat/security/tests/docs/…) | `/cairn:audit <mode>` |
+| Rescan the whole project and diff it against the last rescan | `/cairn:audit sweep` |
 | Five-axis code review of a diff, branch, or phase | `/cairn:review [target]` |
 | Sweep open issues for hygiene problems | `/cairn:triage` |
 | Build/query the project knowledge graph | `/cairn:map build` |
@@ -107,6 +124,18 @@ decision, which stops for you).
   resolves judgment calls silently.
 - Every verb reads `.cairn/profile.md` when present and calibrates tone and
   depth to it — advisory only, never a change to what a verb decides.
+- **Shell is scoped.** A command shim's `allowed-tools` pre-approves the
+  cairn MCP tools, the file tools, and only the read-only git family
+  (`git status|log|diff|rev-parse|describe` and `git worktree list`) —
+  never a bare `Bash`, and never an unscoped `git worktree` or `git
+  branch`: the entries are prefixes, so those would pre-approve `worktree
+  remove --force` and `branch -D` (#414). The run guard refuses a forced
+  worktree remove in every session, the same way it refuses `reset --hard`. Anything a verb runs beyond that (a `node
+  "$CLAUDE_PLUGIN_ROOT/hooks/scripts/..."` report, `git apply`, `git
+  revert`, `claude plugin ...`, a project's own `npm test`) prompts once per
+  session under Claude Code's ordinary per-command approval, the first
+  time that command shape appears. That first prompt is the design, not a
+  bug: a write or a runner is yours to approve, not the shim's.
 
 ---
 
@@ -197,10 +226,12 @@ Execute the phase. The per-issue lifecycle, in vibe mode:
 2. For each issue in order: fetch it, skip closed ones. If it's assigned to
    someone who isn't you (checked against `user.handle` when set), say so and
    skip unless you override.
-3. Before starting: record the current commit as the issue's base and the
-   time as its start. Move the issue to `in_progress` (with your handle as
-   assignee when configured) and post a claim comment — starting now, which
-   wave and task, base commit as a short ref. Then set the active context.
+3. Before starting: record the current commit as the issue's base. One
+   `issue_update` call with a `claim` block (base commit, wave, task, the
+   declared verify command) moves the issue to `in_progress` (with your
+   handle as assignee when configured), posts the claim comment the
+   duration ladder reads, and starts the clock. Then set the active
+   context.
 4. Do the work. Progress comments land at real milestones only — a subtask
    done, a blocker hit, a trace spun off; several small steps batch into one
    comment. Tracker noise is a failure mode, not diligence. No silent state
@@ -221,7 +252,9 @@ Execute the phase. The per-issue lifecycle, in vibe mode:
    remains).
 8. Every close appends a line to the phase's git-committed `LEDGER.md` — the
    durable record that the task landed, with base/head commits and (for TDD
-   tasks) the RED/GREEN pair.
+   tasks) the RED/GREEN pair. Scaffolding writes `**/LEDGER.md merge=union`
+   to the planning root's `.gitattributes`, so parallel branches that each
+   appended a line merge without a conflict (asserted by `test/artifacts.test.ts`).
 9. After the last issue: clear the issue context and suggest
    `/cairn:verify <N>`.
 
@@ -306,6 +339,15 @@ The pre-push gate:
 
 Never pushes with flagged drift or open issues on a verified phase. That's
 the whole point of the gate.
+
+The drift half is also enforced below the verb, by the run guard hook.
+Every `plan_drift` run leaves a stamp: the commit it checked, and whether
+it flagged anything ship stops on. An agent push that would land on the
+default branch is refused unless that stamp is clean and names the exact
+commit being pushed — so a push that skips ship, or one made after new
+commits landed, is refused with a pointer back to `/cairn:ship`. The
+open-issues half stays ship's own check; a hook can't ask the tracker.
+Section 10 has the details.
 
 ### `/cairn:summit`
 
@@ -547,6 +589,15 @@ questions dispatch to the `cairn-designer` agent — the verb keeps the
 session lifecycle and tracker mirror; the agent does the wireframe → tokens
 → prototype work. No fast lane, by design.
 
+Both plugin agents (`cairn-designer`, `cairn-uat`) name cairn's tools in
+their frontmatter by full id — `mcp__plugin_cairn_cairn__<tool>` — never by
+the bare tool name. Since Claude Code 2.1.299 an agent's `tools:` list takes
+only the named MCP server's tools, and a bare name grants nothing: before
+#376 both agents ran with Read/Write/Bash alone while the server sat
+connected beside them. `server/test/agents.test.ts` holds every entry to a
+tool the server registers; a live `claude -p --plugin-dir . --agent
+cairn:<agent>` dispatch is the acceptance when the list changes.
+
 ### Capture & memory
 
 **`mark "<text>" [--seed "<trigger>"] [--note]`** — zero-friction capture in
@@ -687,7 +738,14 @@ for contract drift and unanchored thresholds, translated to plain language),
 — against the real codebase; drifted claims are findings), `security
 --surface` (the agent-config attack surface — `.claude/` hooks and
 settings, plugin manifests, MCP configs, permission allowlists, credential
-literals in tool configs — the layer code audits never see). No target on a
+literals in tool configs — the layer code audits never see), `debt` (the
+in-code deferral markers — `shortcut:`, `TODO:`, `FIXME:`, `HACK:`, `XXX:`,
+the words in `audit.debt.markers` — grepped into one finding each, reported
+by default and filed as `cairn:shortcut` issues under `--apply`, one per
+marker whatever its severity, with vanished markers closed against the
+previous debt record), `sweep`
+(the whole-project rescan — every leg above in one pass, diffed against the
+last sweep; see "The sweep" in section 8). No target on a
 phase-scoped mode = the most recently active phase. Closing discipline,
 every mode, no exceptions: write the audit record (the record is the source
 of truth; the tracker is the summary — and a clean `pass` still gets a
@@ -706,7 +764,9 @@ a "more interesting" target; a branch name = that branch against `main`; a
 phase number = the phase's ledgered commit ranges (read from the ledger, not
 guessed). The panel comes from the seat roster — with no project seats
 that's exactly the five default axes (correctness, clarity, architecture,
-security, tests), a project seat joins in roster order, and every seat
+security, tests) plus the signal-gated defaults — ux when the diff
+touches UI files, lean when it is large or touches server code — a
+project seat joins in roster order, and every seat
 reports an anchored 0-10 score beside the verdict that never gates
 anything; internal seats are framing lenses, `peers` stays the genuinely
 adversarial external council. A clean axis still gets a "no findings"
@@ -791,11 +851,11 @@ manifest, and the remote is always untouched — pushing the reverts is your
 call.
 
 **`peers (none = status) | review [target] | plan <phase> | council [dimensions]`** — convene
-external AI CLIs (codex, opencode, antigravity, grok) as reviewers — a second
+external AI CLIs (codex, opencode, antigravity, grok, copilot — five seats, four labs) as reviewers — a second
 opinion on top of cairn's judgment, never a replacement. **A peer saying
 something doesn't make it true**: every peer finding is verified against the
 actual code (or plan) before it goes anywhere near the tracker. Bare
-`peers`: detection status per provider (on PATH, enabled, input cap) — zero
+`peers`: detection status per provider (on PATH, enabled, lab, input cap) — zero
 peers is a normal result, not a warning. `peers review`: cairn's own
 five-axis review runs FIRST, in full; the outbound content is leak-scanned
 (a hit BLOCKS that send until you decide — redact and retry, or skip that
@@ -958,6 +1018,16 @@ that they won't reach the new home.
 Auth: `GITHUB_TOKEN`, or an existing `gh auth login`. Phases map to
 milestones. Assignee writes: supported. Issue listing paginates up to 1000
 items.
+
+Claude Code plugin installs can hand the token over as a plugin option
+instead: the manifest declares `github_token` (sensitive), so `/plugin
+configure cairn` or the `/config` panel prompts for it, the value lands in
+the platform's secure credential store rather than `settings.json`, and
+Claude Code substitutes it into the server's `GITHUB_TOKEN` at launch. Leave
+the option blank and the server sees an empty `GITHUB_TOKEN`, which it treats
+exactly like an unset one — the environment variable and `gh auth` fallback
+still apply. Other harnesses and `cairn-setup` installs never see plugin
+options; they keep setting the environment variable.
 
 ### GitLab
 
@@ -1174,7 +1244,15 @@ Three things happen everywhere: a `cairn` entry merges into the project's
 installs into `AGENTS.md` between `cairn:begin`/`cairn:end` markers, and
 the verb subroutines copy to `.cairn/harness/` so the harness can execute
 any verb by name — "run cairn status" reads and follows the same
-subroutine `/cairn:status` does. Copilot additionally gets
+subroutine `/cairn:status` does. When the project has a `CLAUDE.md`,
+every target also puts an `@AGENTS.md` import at its top, inside the same
+markers (`cairn-setup claude` creates the file if it is missing): Claude
+Code reads `AGENTS.md` only when no `CLAUDE.md` is in scope (a claim, as
+of 2026-10, per the Claude Code memory docs), so without the import a
+Claude Code session in that project never sees the spine. `--check` is
+red for claude when the import is missing or sits inside a code fence;
+the reader gap and its fix (2026-10-22, #398) are in
+`docs/ARCHITECTURE.md` under "Who reads the spine". Copilot additionally gets
 `~/.copilot/mcp-config.json` wiring, a `copilot-instructions.md` section,
 and `/cairn-plan|work|status|verify|ship` prompt files; Codex gets its
 `[mcp_servers.cairn]` block merged into `~/.codex/config.toml` (marker
@@ -1186,20 +1264,41 @@ same spelling as Claude Code.
 Cursor additionally gets the hooks port: `cairn-setup cursor` installs a
 single adapter (`.cursor/hooks/cairn/cursor-adapter.mjs`) plus the cairn
 hook scripts, and merges entries into `.cursor/hooks.json` — sessionStart
-resumes continuity (banner + handoff as `additional_context`),
-beforeShellExecution runs the leak guard (deny with the offending lines),
-afterShellExecution/afterFileEdit capture breadcrumbs + observations, and
-preCompact refreshes the handoff. OpenCode gets an `opencode.json` `mcp`
+resumes continuity (banner + handoff as `additional_context`), preToolUse
+runs the run guard and the harness guard (Shell and every MCP call through
+both, file writes through the harness guard; the entry fails closed), beforeShellExecution
+runs the leak guard (deny with the offending lines),
+afterShellExecution/afterFileEdit capture breadcrumbs + observations.
+OpenCode gets an `opencode.json` `mcp`
 entry plus `/cairn-plan|work|status|verify|ship` command files in
 `.opencode/commands/`; Zed gets a `context_servers.cairn` entry in
 `.zed/settings.json` and reads `AGENTS.md` natively.
+
+Which guards actually run, per harness — the leak guard (internal refs in
+a commit), the run guard (destructive git, the ship gate, pushes mid-run)
+and the harness guard (hooks, settings, the installed plugin, the
+ship-gate stamp and run manifests):
+
+| Harness | Leak guard | Run guard | Harness guard |
+|---|---|---|---|
+| Claude Code | yes | yes | yes |
+| Cursor | yes | yes — Shell and MCP calls | yes — file-tool path field assumed; an unreadable call is denied; MCP calls judged as in Claude Code |
+| Codex, Gemini CLI, Copilot CLI, OpenCode, Grok Build, Zed | no | no | no |
+
+Where a guard doesn't run, its rule is prose in `AGENTS.md` and nothing
+stops the agent. Codex, Gemini, Copilot and OpenCode all have blocking
+pre-tool hooks the guards could be wired into; that is follow-up work.
+The circuit breaker rides on the guards, so it runs where they run. In
+Cursor the adapter hands the guards no session id, so a frozen run's
+pushes there aren't refused by session; its claims and closes still
+are, by the server.
 
 What degrades, honestly: no slash-command ergonomics in Grok Build, Cursor,
 or Zed (verbs run by name), and the cost tracker stays Claude Code-only
 everywhere — it reads Claude's transcript JSONL for token usage, which no
 other harness produces (Cursor exposes a transcript_path, but not in that
 format). Grok Build claims Claude hook compatibility (untested). Everything the
-SERVER owns — all 79 tools, mirroring, drift math, estimates, attachments,
+SERVER owns — all 87 tools, mirroring, drift math, estimates, attachments,
 custom states — works identically everywhere, which is the point: the
 tracker paper trail doesn't care which model wrote it.
 
@@ -1421,12 +1520,13 @@ piling more work into one context. Advisory means advisory — the tool can't
 pause you; you act on the signal.
 
 **Observation backlog.** The PostToolUse observe hook appends a row per
-Edit/Write/Bash call to `.cairn/observations/observations.jsonl`, and retro
+Edit/Write/Bash call to the repository's shared log in the cairn home,
+`~/.cairn/observations/<project key>.jsonl`, and retro
 is the only thing that ever reads or clears it. Left alone, that buffer
-grows until the hook's retention cap quietly drops the oldest half — work
-nobody reviewed, gone without a word. So memory announces its own state:
+grows until the hook's retention cap quietly drops the oldest closed
+segment — work nobody reviewed, gone without a word. So memory announces its own state:
 `mem_stats` returns an `observations` block (row count, oldest-entry age in
-days, the threshold), and once the count reaches
+days, the threshold, and `path`, the live file it read), and once the count reaches
 `memory.observationWarnThreshold` (default 25) the recall banner carries a
 line directly under its header — `N unreviewed observations (oldest Xd) —
 run retro`. A backlog past the line is enough to render the banner on its
@@ -1462,16 +1562,14 @@ observation log (tool, target, error flag) that `retro` reviews for
 candidate lessons and then clears. Every hook is fire-and-forget
 and targets under 100ms; a hook failure is never visible to your session.
 
-One more hook pair drives the **native-task mirror**: `TaskCreated` /
-`TaskCompleted` events append one row to a per-project spool under
-`~/.cairn/spool/`, and a detached worker mirrors it to the tracker on its
-own clock — a task created in-session shows up as a tracker item and
-closes itself when the task completes. **Flag requirement:** Claude Code
-2.1.233+ ships the task tools (TaskCreate and friends) default-off on
-newer models unless `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` is set — no tools
-means no tasks, no task events, and a mirror that sits dormant without
-erroring. The session-start hook prints a one-line advisory in cairn
-projects when the flag isn't set.
+There is no longer a native-task mirror. Earlier releases listened for
+`TaskCreated` / `TaskCompleted` and mirrored each native task to the
+tracker; Claude Code ships the task tools default-off on every current
+model, so those events never arrive, and the hook pair, its spool and
+the session-start advisory were retired in phase 26 (2026-10-13). The
+verbs' own claim/progress/close comments are the tracker mirror. The
+validated design stays in the repo's `native-task-hook-mirror` skill
+for the day the tools come back on by default.
 
 Guard rails worth knowing:
 
@@ -1531,6 +1629,35 @@ is tests-pass, standard adds the tracker cross-check, deep adds an
 adversarial verification subagent. VERIFICATION.md is written only on a
 pass, and a failed verify mandatorily becomes a trace.
 
+**`verify.rerun`** (cairn.json, default `false`; `verify.timeoutSeconds`,
+default 600). When it's on, a close doesn't just record the evidence the
+worker narrated — the server re-runs the task's declared `verify:` line
+itself, but only when the evidence command equals that line exactly, the
+PLAN.md holding it is tracked by git, and the line is the one in the plan
+YOU approved: `plan_meta_set(phaseDir, approve: true)` stamps the plan as
+it reads right then (`{ blob, at, by }`, kept in local state, never in
+git), and the plan verb asks for that stamp as its last step in engineer
+mode. No stamp, no run (`plan-unapproved`); a line edited since, committed
+or not, is `declared-changed`. Before anything runs, every git invocation
+on the line goes through the run guard's effect classifier — the same
+reader and table your hooks use — and a line that would push, force-push,
+hard-reset or clean is skipped as `effect-refused` with the effect named;
+a line the server can't read (a script file, a shell fed from stdin) is
+`unclassifiable`, and a server installed without the hook scripts beside
+it reports `classifier-unavailable`. This is the one place cairn fails
+closed: nobody is at the keyboard to answer a refusal. It runs under a
+minimal environment, so no tracker token reaches it. Still, know what
+you're switching on: the line runs outside the PreToolUse hooks, so
+approve plans you have read (ADR 0017). What it saw lands beside the
+claim: `observed exit=<n>` on the ledger line, the last 20 lines of output
+in the tool result. A failing or timed-out re-run marks the line
+`observed-mismatch`, which `plan_check` reports as `important` and verify
+fails the phase on — the close itself is never refused (ADR 0017). Every
+reason it ran nothing is named in the result (`plan-untracked`,
+`plan-unapproved`, `declared-changed`, `effect-refused`,
+`command-differs`, …), never silent. The run happens server-side, outside
+your hooks, which is why it only ever runs the owner's approved plan line.
+
 ### Drift
 
 Drift is a stop signal, not a warning. The drift scan reads every phase's
@@ -1575,11 +1702,15 @@ finding, comment, close) or investigation-shaped (open a trace). Not
 clearly mechanical means investigation-shaped by default — the safe side to
 be wrong on.
 
-The plan-quality scan behind `audit plans` runs two deterministic
-detectors: **contract drift** (a consumer's Produces/Consumes contract text
-sharing a named symbol with a producer's but not matching it) and
-**unanchored thresholds** (a quantitative bound — `< 100ms`, `at least
-99.9%` — with no benchmark, fixture, spec, or measurement anchor nearby).
+The plan-quality scan behind `audit plans` runs four deterministic
+detectors: **contract drift** (`contract-drift`: a consumer's Produces/Consumes contract text
+sharing a named symbol with a producer's but not matching it),
+**unanchored thresholds** (`unanchored-threshold`: a quantitative bound — `< 100ms`, `at least
+99.9%` — with no benchmark, fixture, spec, or measurement anchor nearby),
+**missing verify** (`missing-verify`: a task in a planned, non-quick, unverified phase with
+no `verify:` clause), and **missing approaches** (`missing-approaches`: a planned, non-quick,
+unverified phase whose CONTEXT.md lacks the `## Approaches considered`
+block).
 Deterministically ordered, byte-equal across runs on an unchanged tree.
 
 **`audit memory` audits the card store**, and the finding it exists for is
@@ -1604,6 +1735,50 @@ a compiled native binding, and a plugin cache installed under a newer node
 runtime ships without one; an audit that died exactly when memory was
 unhealthy would be the wrong shape. If `indexUnavailable` appears beside the
 card block, the index is down and the card audit still ran.
+
+### The sweep — `audit sweep [--fix]`
+
+What's wrong with this project right now, and is it better or worse than
+last time? That's the question the sweep answers, in one run. Reach for it
+before a release, after a long stretch of out-of-band work, or on a
+cadence — `/cairn:do "rescan this project"` routes here too, through the
+usual confirm.
+
+It runs the existing modes as legs, in a fixed order: `security` and
+`security --surface` (rule-to-control coverage included), `tests`, `docs`,
+`plans`, `debt` (report shape only — filing stays behind `audit debt
+--apply`), `simplify`, `memory` (one "leg skipped" line in a project with no
+card store), and `milestone` last as the closing view, sunset sweep and
+all. Each leg closes exactly the way its mode always does — dedup, the
+refutation panel, its own record, survivors filed with `cairn:audit` plus
+`cairn:sweep` — so a tracker filter on `cairn:sweep` shows everything one
+sweep raised.
+
+Then one manifest: an `audit_record` under a `sweep-<date>` scope that
+lists every leg's record and carries the union of the legs' surviving
+findings, panel votes and all. Nothing is re-judged there. The server
+stamps the cairn version and the commit, and diffs the findings against the
+previous sweep — **new**, **persisting**, **fixed**, **regressed**
+(fixed last time, back now), and **unchecked**, plus how many code commits
+landed in between. A finding only counts as fixed when the leg that raised
+it ran again under the same scope; if that leg was skipped or pointed at a
+newer phase, the finding is unchecked, its leg is named as uncovered, and
+the next sweep still compares against it. The first sweep has no delta;
+it's the baseline the next one is measured against.
+
+The report is one prioritized backlog: regressed critical, new critical,
+persisting critical, then important in the same order, minors as counts,
+and a "fixed since the baseline" line — the payoff — followed by the
+unchecked count and the legs that didn't re-run. Below it: the latest
+eval results as a per-case table (read from the last run, never started by
+the sweep, regression rows marked as gates and any failing gate first), the
+approximate agent spend on the issues the sweep filed, and a portfolio
+snapshot so `/cairn:outlook` sees where the project stands.
+
+`--fix` runs the staged-patch discipline leg by leg — each leg's patches in
+its own scratch directory, its own verifier round, its own apply question —
+never one patch or one ask across legs. A fix applied during a sweep shows
+up as `fixed` in the next sweep's delta, once that leg runs again.
 
 ### Peers
 
@@ -1695,7 +1870,7 @@ nothing.
 | `tracker.config` | object | *(required)* | Backend-specific config (section 4); deep validation lives in the adapter |
 | `docs.connector` | `confluence` \| `docusaurus` | *(optional block)* | Which docs connector runs |
 | `docs.config` | object | — | Connector config: `baseUrl`, `spaceKey`, `emailEnv` (default `CONFLUENCE_EMAIL`), `tokenEnv` (default `CONFLUENCE_API_TOKEN`) |
-| `agents.model` | `auto \| inherit \| haiku \| sonnet \| opus` | `auto` | Model routing for agent fan-out. `inherit` = session model everywhere; an explicit value pins everything; `auto` routes per work class: mechanical → fast tier, synthesis → session tier, judgment gates → strongest. Blast-radius rule: output that gates verify/ship routes UP, never down; uncertain → inherit |
+| `agents.model` | `auto \| inherit \| haiku \| sonnet \| opus` | `auto` | Model routing for agent fan-out. `inherit` = session model everywhere; an explicit value pins everything; `auto` routes per work class to a named tier, never "the session": mechanical → haiku, routine synthesis → sonnet, complex synthesis → opus, judgment gates → strongest available (as of 2026-10, Fable). `work` reads a task's PLAN.md `model:` annotation before the rubric, passes each issue's resolved model on dispatch, and prints the resolution per issue in its wave report. Blast-radius rule: output that gates verify/ship routes UP, never down; uncertain → inherit | Every dispatch also carries the rubric's `effort` dial for its work class (mechanical low, routine synthesis medium, complex synthesis and judgment high; Claude Code 2.1.292+). cairn never sets `CLAUDE_CODE_WORKFLOW_SUBAGENT_MODEL` — it pins every workflow subagent to one model and flattens this routing to a single row |
 | `memory.tokenThreshold` | positive integer | `150000` | The capacity-guard advisory line for the memory index |
 | `memory.observationWarnThreshold` | positive integer | `25` | Unreviewed observation rows before the banner says "run retro" |
 | `user.handle` | non-empty string | *(optional)* | Your tracker identity — enables ownership tracking, claiming, skip-others'-work |
@@ -1706,11 +1881,31 @@ nothing.
 | `continuity.recallIndex.enabled` | boolean | `true` | The session-start memory banner |
 | `continuity.recallIndex.maxCards` | positive integer | `20` | Banner card cap |
 | `drift.staleDays` | positive integer | `5` | Days of silence before `plan_drift` calls work stale |
-| `leakGuard.enabled` | boolean | `true` | The commit-time leak guard hook |
+| `ship.confirm` | boolean | `true` | Ship's push-or-hold question before anything leaves the machine; `false` restores the silent push |
+| `auto.breaker` | integer ≥ 0 | `3` | Guard refusals inside a live headless batch run that freeze it (the circuit breaker, beside the run guard below). `0` turns the freeze off; every refusal is still logged. Copied into the run manifest at staging and read from there — a mid-run edit governs the next run only (#433) |
+| `audit.debt.markers` | non-empty string[] | `["shortcut", "TODO", "FIXME", "HACK", "XXX"]` | The comment words `audit debt` greps for (each followed by a colon). An override replaces the list, never merges; an empty list is refused at load |
+| `leakGuard.enabled` | boolean | `true` | The commit-time leak guard hook, and the scan `peer_run` makes of outgoing input |
 | `leakGuard.allow` | string[] | `[]` | Path globs exempt from the guard |
 | `leakGuard.extraPatterns` | string[] | `[]` | Additional regex patterns to guard against |
-| `peers.<provider>.enabled` | boolean | `true` when absent | Per-provider toggle; providers: `codex`, `opencode`, `antigravity`, `grok` — unknown keys are rejected |
+| `peers.<provider>.enabled` | boolean | `true` when absent | Per-provider toggle; providers: `codex`, `opencode`, `antigravity`, `grok`, `copilot` — unknown provider names are rejected |
+| `peers.<provider>.model` | string | template default (`copilot`: `gpt-6.1-sol`) | Model pin for seats whose CLI takes a model flag — today only `copilot`. A `claude-*` id is refused at load (the adjudicator's own family shares its blind spots), `auto` is accepted (since 2026-10-14) for plans that serve no catalog id — the seat runs but its lab reads `unknown`, so it never completes a convergence cluster on its own. Pin a model your plan actually has; an unavailable one exits 1 with stderr only and the run records the seat as incomplete |
 | `peers.<provider>.maxInputChars` | positive integer | `200000` | Input cap per provider; longer input is head-truncated with a verbatim marker line |
+| `peers.<provider>.execCapable` | boolean | `false` when absent | Your declared trust that this CLI may run from the project folder to exercise the product during a functionality review. Without it every peer runs contained in a scratch folder, and `peer_run` refuses project mode. Never probed at runtime |
+| `peerFanout.maxConcurrent` | positive integer | *(optional block)* — absent, sized to the host: min(cores − 1, free memory ÷ 750MB, 8), at least 1 | How many peer CLIs run at once; `peer_list` reports it and the `peers` verb dispatches in batches no wider. Its own block because `peers` is keyed by provider name |
+| `seats.enabled` | string[] | *(optional block)* — absent, every shipped default seat plus any project seat | Picks the seat roster and its order; a name that matches no valid seat definition is skipped with a roster note |
+| `seats.disabled` | string[] | — | Seat names removed from the roster |
+| `seats.dispatch` | `auto \| off` | absent ≡ `off` | What a verb's `inherit` dispatch dial resolves to: `auto` lets diff signals and seat yield pick the seats that fire; `off` fires the full roster |
+| `contextEconomy.autocompactPct` | number 0.05–1, or `null` | `null` | The `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` you want. cairn never sets it; `config_probe` reports when the live value disagrees. `null` leaves the harness default alone |
+
+**Unknown keys are mostly ignored, not rejected.** Most blocks drop a
+key they don't know without a word: a misspelled `ship.confrim` or
+`leakGuard.enabeld` validates, stays in the file, and does nothing,
+while the setting you meant keeps its default. A few places are strict.
+The `seats`, `verify` and `auto` blocks reject any key they don't know,
+and `peers` rejects a provider name outside the four. A field misspelled *inside* a provider's
+entry is dropped like everywhere else, so a typo in `execCapable` leaves
+that peer contained. When a setting seems to have no effect, check its
+spelling first.
 
 **The secrets-in-env rule, enforced:** config writes refuse any
 credential-shaped key (`token`, `apiToken`, `api_key`, `password`,
@@ -1785,32 +1980,380 @@ has no pull-request surface and inventing one for an advisory flag is the
 wrong trade. A branch under review that nobody has finished in a week
 shows up here too, which is arguably right.
 
-Its sibling is the **run guard**, which protects your working directory
-rather than your outbound text. A batch run works inside its own
-worktree, so you can keep editing while it builds. The guard makes that
-separation enforced rather than merely intended: while a run's manifest
-reads `running`, a `git checkout`, `git switch`, or `git reset --hard`
-aimed at your main checkout is refused with a plain line naming the run.
-The same commands inside the run's own worktree pass untouched, as does
-every other git command — a commit message that happens to mention
-checking out does not trip it. If the refusal fires, the run escaped its
-worktree: put it back rather than reaching for the override. That
-override, for the rare hand-run case, is a `CAIRN_RUN_OK=1 ` prefix,
-same shape and same prefix-only rule as the leak guard's.
+The leak guard's sibling is the **run guard**, which protects your
+working tree and your history rather than your outbound text. It reads
+every git command the agent runs through Bash the way a shell would:
+through wrappers and their flag values (`sudo -u root`, `timeout 5`,
+`env`, `nice -n 5`), program runners that start another command
+(`xcrun`, `arch -arm64`, `caffeinate`, `script -q /dev/null`, `flock`,
+`watch`, `strace`, `runuser`, and the g-prefixed GNU tools Homebrew
+installs), a `sh -c` string (and the line `script -c`, `flock -c` or
+`runuser -c` hands a shell), shell keywords and grouping (`if`, `for`,
+`{ }`, `( )`), and a `$(…)` or backtick, quoted or not, which still
+runs — and which is one word of the command around it, so `git reset
+$(git rev-parse HEAD~1) --hard` is a hard reset, its `--hard` never cut
+off into a line of its own. A
+runner the table doesn't name is backstopped: when an unknown program's
+later words form a command — `op run -- git push`, `bundle exec git
+reset --hard`, `uv run`, a `-c` string, `tmux new-session -d '…'`,
+`osascript -e 'do shell script "…"'` — that inner line is judged too, so
+the table needn't grow one runner at a time. A program that only prints
+or searches its arguments (`echo`, `grep`, `gh`, `jq`, …) runs none of
+them — except the one option that does run a program, which is read as
+a command line of its own: `man -P` / `--pager`, `gh alias set --shell`
+(or a `!` expansion), `gh config set pager|editor|browser`, `rg --pre`,
+`ag`/`ack --pager`, `sort --compress-program`; a `gh extension exec` or
+a word that isn't a `gh` command is an extension or alias, an unknown
+program judged like any runner; and a pager variable set on the line
+(`PAGER=`, `MANPAGER=`, `GIT_PAGER=`, `GH_PAGER=`) runs on the `man`,
+`git` or `gh` it rides on. `man git-reset`, `gh pr create --body "…"`,
+`GIT_PAGER=cat git log` and `rg --pre-glob` stay allowed. An MCP tool's
+command line is read the same way (see *Which tools
+the guards see*, below). Quoted text that only mentions git never trips
+it — a commit message saying "never `git reset --hard`" passes. A
+heredoc body is data too, so a README written through `cat <<'EOF'`
+can say the same; only the `$(…)` or backtick an unquoted body
+(`<<EOF`) runs is read as a command, and a heredoc fed to a shell
+reading stdin (`sh <<EOF`, `cat <<EOF | sh`) is that shell's script. A guard
+that breaks lets the command through rather than blocking work.
+
+It judges git by **effect**, not by a list of spellings. Every git
+command is classified, from git's own reading of its flags (a long
+option shortened as git allows — `--har` is `--hard` — a short cluster
+like `-fu`, a `+refspec`, a whole-tree pathspec), into the effects it
+carries:
+
+- **discards-work** — uncommitted or unpushed work is lost with no undo;
+- **moves-shared-ref** — the default branch or any remote ref changes;
+- **touches-owner-checkout** — the working tree and HEAD of the checkout
+  it runs in change, which mid-run matters when that checkout is yours;
+- **read-only** — none of the above, the default.
+
+The rules below refer to effects only, and every refusal ends with a
+line naming the effect and the flag that caused it — ``effect:
+discards-work, from `--har`; also touches-owner-checkout.`` — so you can
+see why it fired. The classifier's table lives in
+`hooks/scripts/git-effects.mjs`.
+
+**discards-work — refused in every session.** Each refused form has an
+everyday neighbour that carries no discarding effect and stays allowed,
+because the neighbour is routine or recoverable:
+
+| Refused in every session | Still allowed |
+|---|---|
+| `git reset --hard` | `git reset`, `git reset --soft` |
+| Any force push: `--force`, `-f` (alone or in a cluster like `-fu`), `--force-with-lease`, `--force-if-includes`, or a `+refspec`, before or after a bare `--` | A plain `git push` |
+| A whole-tree `git checkout` or `git restore`: a pathspec of `.`, `./`, `..`, `:/`, `*` or `**` (with or without `--`), or `--pathspec-from-file` | One path (`git checkout -- src/a.ts`, `git restore a.ts`), and `git restore --staged .`, which touches only the index |
+| `git checkout -f`, `git switch --discard-changes` or `-f` | `git checkout <branch>`, `git switch <branch>`, `git switch -c <new>` |
+| `git clean`, unless it's a dry run | `git clean -n` / `--dry-run` |
+| `git stash clear`; `git stash pop`, `apply` or `drop` while the repository has more than one worktree (they share one stash) | `git stash list` and `show`; `pop`, `apply` and `drop` with one worktree; `git stash push`, which proceeds with an advisory when worktrees share the stash |
+| `git reflog expire` | `git reflog` |
+| `git push --mirror` (or a plain push to a remote configured to mirror), `git push --prune` | Pushing a named feature branch |
+| A push that deletes the default branch | Deleting a feature branch (`git push origin --delete feature`), `git branch -D` |
+
+`git clean` refuses even without `-f`, because `-c
+clean.requireForce=false` or a repo setting turns git's own safety off.
+
+**moves-shared-ref onto the default branch — only what a clean drift
+check saw.** An agent push that would land on the default branch — `main`, `master`,
+or the remote's HEAD branch, whether named, swept up by `--all` /
+`--mirror`, or a bare `git push` from that branch — is refused unless
+the last `plan_drift` left a clean stamp for the exact commit being
+pushed. Each of these refuses:
+- no stamp;
+- a stamp for another commit, one that flagged drift, or a corrupt one;
+- a stamp, or a stamp folder, that exists but can't be read. The push is
+  refused rather than the check skipped.
+
+Two more rules close the ways around the gate:
+- **The gated push must be its own step.** If anything earlier on the
+  same line can make a commit or move a ref (a commit, merge, rebase,
+  reset, `branch -f`, a fetch, or any program that isn't known to be
+  read-only), the commit being pushed isn't the one the stamp saw yet.
+  The push is refused, with a line saying to push on its own after the
+  drift check.
+- **The gate checks the repository git will actually push.** The guard
+  follows `cd` and `pushd` (every folder the line could end up in),
+  `-C`, `--git-dir` / `--work-tree` and `GIT_DIR` / `GIT_WORK_TREE`.
+  Another clone needs its own stamp (the worktrees of one repository
+  share one), and a folder the guard can't work out refuses the push.
+
+Other branches and tags are untouched. The refusal points at
+`/cairn:ship`, which runs the drift check and then pushes. This is the
+hook half of ship's "never push with flagged drift".
+
+**While a batch run is live** — a run manifest for this project reads
+`running` — two more rules apply. A batch run works inside its own
+worktree so you can keep editing while it builds, and the guard makes
+that separation enforced rather than merely intended: anything carrying
+**touches-owner-checkout** — `git checkout`, `git switch` and `git reset
+--hard` — aimed at your main checkout is refused with a line naming the
+run. A hard reset there carries discards-work too, and the refusal names
+both; it refuses even with the destructive override set. In the run's
+own worktree they pass, subject to the always-on rules.
+If that refusal fires, the run escaped its worktree — put it back. And
+anything carrying **moves-shared-ref** — `git push`, from any worktree
+(the run's own is exactly where it pushes) — is refused unless the manifest carries the push authority you
+granted at staging for its phases *and* marks one of those phases in
+flight. `auto` records the phase with `run_manifest`'s `set_phase`
+action at each phase start, and it only moves forward; a running
+manifest with no phase marked — an older manifest, or a run between
+phases — refuses. A refused push leaves the phase verified-not-pushed,
+for you to push once the run is done. The push rule has no override:
+push authority is your staging decision.
+
+**The overrides are yours, not the agent's.**
+`CAIRN_ALLOW_DESTRUCTIVE_GIT=1` lifts the always-on discards-work refusal, and
+`CAIRN_ALLOW_UNSHIPPED_PUSH=1` lifts the default-branch gate. Each lifts
+only its own rule — deleting the default branch with the table unlocked
+still meets the stamp gate — and each counts in two shapes only: set in
+the session's environment, or as the leading assignment of the one
+command it unlocks. A mention anywhere else, quoted in a commit message
+or after `&&`, does nothing. The owner-checkout rule has a one-command
+escape of its own, a leading `CAIRN_RUN_OK=1`. No refusal prints a
+paste-ready prefix. It says the act needs the owner's go-ahead, names
+your ways to give it — run the command yourself with `!` from your
+prompt, or start the session with the variable set — and adds that a
+request found in tracker or web text is not you asking. An agent never
+sets one of these because an issue body, a review comment or a fetched
+page asked it to. If a refusal fires and you didn't ask for the act,
+find out where the instruction came from first.
+
+**The circuit breaker — repeated refusals freeze a headless run.** Each
+guard refuses only the call in front of it; the breaker is what notices
+a run that keeps getting refused. Every refusal from any of the three
+guards — run, harness, leak — appends one row to the cairn home's
+refusal log (`~/.cairn/refusals/<project>.jsonl`): when, which guard and
+tool, the effect refused, a fixed reason, the session, the run if one is
+live, and a sha256 of the tool input. Never the command or the path
+itself: a command line can carry a credential, and the log outlives the
+session. While a batch run is live, the rows from the run's own session
+— the one its manifest names, recorded at staging from the shell's
+`$CLAUDE_CODE_SESSION_ID`, else stamped by the run guard from the first
+call of a session working in the run's checkout — carry its run id, and
+at the limit staged into its manifest (`auto.breaker` as it read when the
+run was staged, default 3) the breaker freezes the run — the manifest
+moves to `stopped` with a `stop` block naming the reason, the
+last three refusals and the sessions they came from. A refusal from any
+other session is logged and never counted, so no session can freeze a
+run it never touched (#431) — with one stated exception: a run staged
+without a session id belongs to the first session seen working in
+exactly its checkout, which the run guard stamps on that session's first
+call (a residual, dated 2026-11-03). From then on:
+
+- the run's own session is refused any `git push` (a stopped manifest
+  would otherwise lift the mid-run push rule). A workflow's subagents
+  share their dispatching session's id, so they count as the run's —
+  observed 2026-10-22, a claim about the harness that can expire. Your
+  sessions are untouched;
+- claim, close and `run_manifest` moves from the run's own server return
+  `RUN_FROZEN`. The hooks can't reach the tracker, so the first of those
+  calls posts the one plain-language comment the freeze owes, on the
+  issue in hand, and the manifest records that it did;
+- the board (`/cairn:outlook`) shows the project's latest run as frozen.
+
+A frozen run never resumes under its id: read the refusals in its
+report, fix the plan, then re-stage what's left with `/cairn:auto
+--batch`. There is no variable to set. `auto.breaker: 0` turns the
+freeze off for the runs staged after it; the rows are still written.
+The limit is copied into the run manifest at staging and read from
+there, so a running batch cannot switch its own breaker off by editing
+`cairn.json` — a mid-run edit governs the next run only (#433; the runs
+folder is a protected zone, `cairn.json` is yours to edit on purpose). An
+interactive session is never
+frozen: with no live run the rows are only the audit, and a session that
+never named the run is never refused by its freeze. The breaker fails
+open — a refusal log it can't write or read means no breaker for that
+run, said once — and it never changes what a guard decided. The harness
+guard protects the log the way it protects the run manifests. Its
+limits, stated: a call two guards both refuse counts twice, and a freeze
+that lands in the same instant as a server write to the manifest can be
+lost — the next refusal, still past the limit, makes it again.
 
 The third of the trio is the **harness guard**, and it protects the
 configuration that decides what the agent may do at all: the `hooks/`
-directory, `.mcp.json`, the settings files under `.claude/`, the plugin
-manifests under `.claude-plugin/`, and your machine-wide Claude
-settings. An agent that can rewrite its own hooks can switch off every
-other control in one edit, so edits, writes and the shell shapes that
-write (redirect, `sed -i`, `tee`, `cp`, `mv`, `rm`) are refused on those
-paths. Reading them is untouched — inspecting a hook is ordinary work.
-The refusal names the file and then asks the question that matters: if
-you did not ask for this, something the agent read did, so find out
-where the instruction came from before allowing it. To allow it
-deliberately, set `CAIRN_HARNESS_EDIT=1` for the session, or prefix a
-shell command with it.
+directory, `.mcp.json`, the settings files under any `.claude/` folder,
+the plugin manifests under `.claude-plugin/`, and your machine-wide
+Claude settings (`~/.claude/settings.json` and `settings.local.json`).
+The folder git runs its hooks from is on that list too — `core.hooksPath`
+when set, else `.git/hooks` — because a hook planted there runs at your
+next checkout or commit, in every worktree, as you (#353).
+An agent that can rewrite its own hooks can switch off every other
+control in one edit, so the Edit, Write and NotebookEdit tools are
+refused on those paths, and so is any Bash line or known MCP tool shape
+that would write them.
+The guard reads Bash with the same shell reader as the run guard and
+looks for what a line *writes*: redirects; the operands of commands that
+remove, create or change files (`rm`, `touch`, `tee`, `chmod`, `sed -i`,
+`dd of=`); `cp`, `mv`, `ln`, `install` or `rsync` into a protected
+folder; downloads (`curl -o` / `-O`, `wget -O`); archives unpacked there
+(`tar -C`, `unzip -d`); patch tools (`git apply`, `patch`), judged by
+the files the patch touches; `git checkout`, `restore`, `rm` and `mv` on
+those paths; the folder a tree-creating command plants, judged like a
+`mkdir` of it — `git clone`, `git worktree add`, `git submodule add`,
+`git init`, `gh repo clone`, `gh repo fork --clone`, `npx degit` and the
+`create-*` initializers (`npx create-x`, `npm create x`, `npm init x`,
+`pnpm`/`yarn`/`bun create`, and a bare `npm init`'s `package.json`),
+with the repo's own name as the folder when none is given, so a clone
+into `.claude/skills` or `~/.claude/skills` — the install line a skill
+README carries, which can plant a plugin with hooks and MCP servers of
+its own — is refused while one into `src/`, `/tmp` or the project root
+passes; `find -delete` or `-exec` over them; paths piped into
+`xargs`; the file a wrapper writes itself (`time -o`, `script`'s
+typescript); and all of these inside wrappers and the same program
+runners the run guard reads through — including the off-table backstop,
+so a write behind `op run --`, `bundle exec`, `pnpm exec`, `uv run` or
+`tmux new-session -d` is seen — `bash -c`, `su -c`, a heredoc fed to a
+shell, or shell keywords and grouping. Removing a protected
+folder, or a folder that holds one (the project itself, your home),
+counts too. So does Claude Code writing that configuration itself:
+`claude mcp add` and `remove`; `claude plugin install`, `uninstall`,
+`update`, `prune`, `enable`, `disable` (which would switch these guards
+off next session), `init` and `configure --values-stdin`; the `claude
+plugin marketplace` writes; and `claude import` — run as `claude` or
+through `npx`, `bunx`, `pnpm dlx`, `yarn dlx` or `node` and its CLI.
+Listing, a dry run and `--help` pass. A relative path is judged from
+the tool's working folder and from every folder a `cd`, `pushd`, `env
+-C` or `git -C` on the line could have moved to, in any order, because a
+`cd` can fail or run later. A `git -C` (or `tar -C`) value is read the
+way a `cd` target is: `~/proj`, `$HOME/proj` and `"$PWD"` are spelled
+out, so `git -C ~/proj rm -r hooks` is judged where it lands.
+After a `cd` the guard can't follow (`cd "$X"`, `cd -`, `cd $(…)`), a
+relative write is refused with a line saying so — name the folder
+plainly, or write to an absolute path, and it can judge it. The same
+line refuses a write whose folder a substitution computes (`rm -rf
+$(somecmd)/hooks`, `echo x > $(somecmd)/notes.txt`): nothing in front
+of the `$(…)` anchors it, so it could land anywhere, a protected folder
+included. The two computed folders the guard does know are spelled out
+first, the way `$PWD` is — `$(pwd)` (or `` `pwd` ``) is the shell's
+folder and `$(git rev-parse --show-toplevel)` is the repo root above it
+— so `echo x > $(pwd)/notes.txt` passes and `rm -rf $(pwd)/hooks` is
+refused as the hook directory it is. A `$(…)` elsewhere on the line is one word of its
+command, so the literal target after it is judged as itself — `cp
+$(echo x) hooks/hooks.json` is a cp onto the hooks file — and a computed
+name under a folder the guard knows (`/tmp/$(date +%s).bak`) is judged
+there, as a `$NAME` is. The body of a `<(…)` or `>(…)` runs too, and so
+does a `$(…)` inside `$((…))` — or the whole `$((…))`, in a shell that
+can't parse it as arithmetic and runs it as a subshell — so each is read
+as a line of its own: `tee >(cat > hooks/hooks.json)` is a write onto
+the hooks file and `$((rm -rf hooks))` removes the hook directory, while
+`diff <(sort a) <(sort b)` and `echo $((1+2))` are the ordinary work
+they look like. Bodies nest eight levels deep; a line nested deeper is
+refused unread by both guards, with a line saying so — flatten it into
+steps of its own and they can judge it. Reading
+these files is untouched — inspecting a hook is ordinary work — and so
+is a heredoc that is only data: its lines are never commands, but the
+`$(…)` or backtick inside an unquoted body (`cat <<EOF`) runs before
+the command ever reads it, so each is read as a line of its own, and
+`cat <<EOF` / `$(rm -rf hooks)` / `EOF` is the removal it is, while
+the quoted-delimiter `cat <<'EOF'` keeps the same text literal and
+passes. The refusal names the file and then asks
+the question that matters: if you did not ask for this, something the
+agent read did, so find out where the instruction came from before
+allowing it. The override, `CAIRN_HARNESS_EDIT=1`, is the owner's too:
+set for the session, or as the leading assignment of one command, where
+it exempts that command only, not the rest of a chained line.
+
+The protected set also covers cairn's own trust anchors:
+- the ship-gate stamps and run manifests in the cairn home (`$CAIRN_HOME`
+  when set, `~/.cairn` either way), but not the run reports beside them,
+  which the auto verb writes;
+- the live plugin folder, everything in it except the project itself
+  when the project sits inside it;
+- `~/.claude/plugins/` (the registry and the plugin cache);
+- `~/.claude/skills/`, `~/.claude/agents/` and `~/.claude/commands/`,
+  since a folder in `~/.claude/skills/` carrying a plugin manifest loads
+  next session as a plugin with its own hooks and MCP servers;
+- `~/.claude/hooks/`, and every script a hook or the status line runs in
+  your user settings, the project's `.claude/settings.json` and
+  `settings.local.json`, or the project's and the live plugin's
+  `hooks/hooks.json` — wherever it lives (`~/.config/…`, `$HOME/bin/…`,
+  `$CLAUDE_PROJECT_DIR/…`, `${CLAUDE_PLUGIN_ROOT}/…`). A script swapped
+  in runs at the next hook event, outside any tool call, so replacing
+  one is refused like adding a hook is; so are removing the folder
+  around it and a rename that drops a new one in its place. The
+  settings are read fresh on every call; one that won't parse is
+  skipped, and the folder rule still stands;
+- every script a protected MCP config launches from outside the
+  project — the stdio servers in `~/.claude.json` (its own and each
+  project's), the project's `.mcp.json`, and Cursor's `.cursor/mcp.json`
+  and `~/.cursor/mcp.json` — read off each server's `command` and `args`
+  the same way (`node ~/repos/…/dist/index.js`, `$HOME/bin/server`, a
+  symlink and the file it points to), and the folder a config names for
+  its server to run in, protected whole — `uv --directory ~/weather run
+  weather.py`, the MCP quickstart's Python shape, where the script has
+  no slash and the folder is an option value; a server entry's `cwd`,
+  which its `./dist/index.js` resolves from; and `node ~/srv/dirmain`,
+  which runs that folder's `index.js`. That folder only, never its
+  parents: a file beside it stays ordinary work. A swapped server script runs when
+  the next session starts that server, with whatever tokens its config
+  hands it, so it gets the same refusals a hook script does. A script
+  inside the project stays writable on purpose: cairn's own `.mcp.json`
+  launches its `server/dist` build, and a build has to rewrite it. A
+  program found on `PATH` by name isn't looked up, and a config that
+  won't parse is skipped;
+- the project's `.claude/hooks/`, `.claude/agents/`, `.claude/skills/`
+  and `.claude/commands/`;
+- Cursor's `.cursor/hooks.json` and `.cursor/hooks/`, plus removing or
+  replacing the `.cursor` folder itself.
+
+The server's own writes to the stamp and manifests never pass through
+the hook, so they are unaffected. One known gap is left open on purpose:
+moving a live run to "stopped" is a legal tool action and lifts the
+mid-run push block. Like the run guard's, these refusals name the owner's
+ways to approve and give no paste-ready prefix.
+
+**Which tools the guards see.** `hooks/hooks.json` hands the run guard
+Bash and every MCP tool (`mcp__*`), the harness guard Edit, Write,
+NotebookEdit, Bash and every MCP tool, and the leak guard Bash alone.
+An MCP tool is judged by the shapes these guards know, not by what its
+server can do:
+
+- **A command line in its input** — a `command`, `cmd` or
+  `shell_command` field — is read like a Bash line. Both guards read it
+  through one shared reader, so they see the same shapes: that field as a
+  string, as an exec-style array of strings, or with an `args` /
+  `arguments` list beside it; each entry of a `commands` list; a `script`
+  unless a language field names a non-shell; and `code` whose language is
+  a shell (a `/bin/bash` path counts) — from the folder the input names
+  in `cwd`, `workdir`, `working_directory` or `workingDirectory`.
+- **A path a writing tool names.** When the tool's own name says it
+  writes, edits, creates, deletes, moves, copies or saves
+  (`write_file`, `edit_block`, `move_file`, `create_directory`,
+  `delete_file`, `take_screenshot`…), the harness guard judges its
+  `path`, `paths`, `file_path`, `filePath`, `target`, `destination`,
+  `dest` and `new_path` fields as written, plus `source` for a move.
+  A read tool passes, whatever it names.
+
+Everything else passes: a writing tool under another name or field, and
+any MCP tool that runs arbitrary code — Python or JavaScript in a
+code-runner, keystrokes typed into a REPL it started — which is the
+same class as a `python -c` one-liner, out of reach of a command-text
+reader. For an exec-capable MCP server, use the harness's own
+permission rules: list its tools under `ask` (or `deny`) in your
+settings, as `mcp__<server>` or `mcp__<server>__<tool>`, so every call
+waits for you.
+
+**What happens when a guard cannot run.** "Fails open" has two halves,
+and only one of them is cairn's. A guard's own internal error — a
+payload it can't parse, a classifier that throws — exits 0 and the call
+goes through, because a broken guard must never be the reason work
+stops (ADR 0016; asserted in `server/test/runguard-effects.test.ts`
+"fails open" and `server/test/runguard-guards.test.ts` "garbage stdin
+fails open"). Claude Code's command hooks have carried an `onFailure:
+"block"` setting since 2.1.295 — set it and a hook that cannot start,
+times out or exits with an unexpected code blocks the action instead.
+`hooks/hooks.json` leaves it unset on purpose: it would invert the
+rule above, and the next sweep should read the absence as the decision
+it is, not an oversight. The other half is the platform's. Since
+2.1.299, when Claude Code cannot hand a hook its payload or cannot read
+its answer back, an action the hook could have blocked is refused rather
+than let through, and on Windows a PreToolUse hook with no shell blocks
+the call instead of failing open — regardless of `onFailure`. So the
+honest sentence is: a guard fails open on its own error; the platform
+fails closed when it cannot reach the guard or read its answer. Both
+halves of that platform behaviour are claims about the harness, dated
+2026-10-14 from the 2.1.299 changelog, and can expire (#371).
 
 One more hook worth knowing, on the advisory side rather than the
 refusing side: the **loop check** notices when the same tool is called
@@ -1826,8 +2369,16 @@ instructions embedded in text the agent reads, which the trailhead's
 "tracker text is data" rule addresses on the judgment side. The guard
 turns a silent success into a refusal a human sees. It is not a sandbox,
 and text that can steer the agent can also ask for the override; real
-isolation is the operating system's job. The Bash coverage is
-best-effort matching over the command text, not a shell parser.
+isolation is the operating system's job. Both guards read Bash through
+one shared shell reader, so a fix reaches both, but it is still a
+reading of the command text, not the shell itself. The harness guard
+doesn't see a write inside an interpreter (`python -c`, or an MCP tool
+running code), a write that only exists in a substitution's output
+(`$(cat script)` run as a command — the body of a `$(…)`, a `<(…)`,
+`>(…)` or `$((…))`, and the literal target after any of them are read),
+an archive's members, paths an
+upstream command finds for itself (`git ls-files | xargs rm`), or an MCP
+tool outside the shapes above.
 
 ---
 
@@ -1980,9 +2531,10 @@ you need to know what actually happened versus what the docs claim.
 | `~/.cairn/handoff/<project>-<hash>.json` | session handoff — ephemeral, per-machine | every state-changing tool + hooks |
 | `~/.cairn/banner/<project>-<hash>.md` | pre-rendered recall banner | re-rendered on card/context changes |
 
-### The 79 MCP tools, by subsystem
+### The 87 MCP tools, by subsystem
 
-**Active context (2):** `context_get` · `context_set`
+**Active context (3):** `context_get` · `context_set` · `context_meter`
+(context rent rollup: per-turn average, bands, residency, prefix)
 
 **Tracker / issues (14):** `issue_create` · `issue_get` · `issue_update` ·
 `issue_close` · `issue_list` · `issue_comment` · `issue_attach` ·
@@ -1997,9 +2549,10 @@ you need to know what actually happened versus what the docs claim.
 `plan_meta_set` · `plan_resync` · `plan_tracker_delta` · `plan_unplanned` ·
 `plan_import`
 
-**Memory (8):** `mem_index` · `mem_search` · `mem_stats` ·
+**Memory (9):** `mem_index` · `mem_search` · `mem_stats` ·
 `mem_card_create` · `mem_card_list` · `mem_card_recall` ·
-`mem_card_update` · `mem_timeline`
+`mem_card_update` · `mem_timeline` · `mem_compact`
+(retro-gated card compaction, the capacity guard's action)
 
 **Continuity (4):** `continuity_checkpoint` · `continuity_get` ·
 `continuity_clear` · `ledger_append`
@@ -2025,7 +2578,20 @@ you need to know what actually happened versus what the docs claim.
 **Outlook / portfolio (4):** `outlook_emit` · `outlook_get` ·
 `outlook_refresh` · `outlook_forget`
 
-**Docs connector (2):** `docs_publish` · `docs_status`
+**Docs connector (3):** `docs_publish` · `docs_status` · `docs_drift`
+(deterministic report of verified phases the public docs have drifted from)
+
+**Budget (2):** `budget_check` · `token_estimate`
+(spend ledger gate for headless batch runs; predicted phase token spend as a range)
+
+**Run manifest (1):** `run_manifest`
+(staging interview output and manifest for headless batch runs)
+
+**Seats (1):** `seat_roster`
+(merged roster: shipped default seats overridden by project seats)
+
+**Distill (1):** `distill_manifest`
+(one phase's manifest: the scope an incremental distill run may touch)
 
 ---
 

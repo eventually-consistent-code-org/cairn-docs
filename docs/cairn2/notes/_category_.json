@@ -2,8 +2,8 @@
   "label": "Notes",
   "position": 9,
   "customProps": {
-    "cairn_version": 9,
-    "cairn_release": "2.7.0"
+    "cairn_version": 14,
+    "cairn_release": "2.9.2"
   },
   "link": {
     "type": "generated-index"

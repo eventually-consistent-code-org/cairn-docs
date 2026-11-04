@@ -4,13 +4,16 @@ sidebar_position: 7
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # 0007 — Push authority is pre-authorized at staging, never assumed
 
 Date: 2026-09-04. Status: accepted.
+
+removeWhen: never — the push confirmation is an owner-decided policy gate, not a workaround for a model limit. A more capable agent does not change who decides what leaves the machine.
+derives: axiom 5 (owner-ground)
 
 ## Context
 

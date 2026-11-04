@@ -4,13 +4,16 @@ sidebar_position: 4
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # 0004 — Folder-per-project containers in Confluence
 
 Status: accepted (v2, 2026-07-24)
+
+removeWhen: the team space stops organizing work as one top-level folder per project. This mirrors a house convention, not a model or platform limit.
+derives: convention — a wiki layout choice mirroring the space convention; no clause decides where pages sit
 
 ## Context
 

@@ -4,13 +4,16 @@ sidebar_position: 1
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # 0001 — Docs connectors mirror the tracker adapter pattern
 
 Status: accepted (v2, 2026-07-24)
+
+removeWhen: wiki vendors ship their own maintained servers for page find/create/update with declared capabilities, so cairn can call those directly instead of keeping a second adapter registry of its own.
+derives: axiom 2 (mechanism-vs-judgment)
 
 ## Context
 

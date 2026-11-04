@@ -4,13 +4,16 @@ sidebar_position: 15
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.7.0"
+  cairn_version: 9
+  cairn_release: "2.9.2"
 ---
 
 # 0015 — Consultation and challenge ride existing disciplines, growing nothing
 
 Date: 2026-09-13. Status: accepted.
+
+removeWhen: never — one path from a finding to the tracker is a surface-discipline rule, not a capability workaround.
+derives: axiom 6 (surface-is-rent)
 
 ## Context
 

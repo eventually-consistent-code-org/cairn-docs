@@ -4,8 +4,8 @@ sidebar_position: 3
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 1
-  cairn_release: "2.7.0"
+  cairn_version: 6
+  cairn_release: "2.9.2"
 ---
 
 # Context economy, phase B — killed at the gate

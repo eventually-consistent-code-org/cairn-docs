@@ -4,13 +4,16 @@ sidebar_position: 18
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 1
-  cairn_release: "2.7.0"
+  cairn_version: 6
+  cairn_release: "2.9.2"
 ---
 
 # 0018 — Memory's self-checks read files and git, never the search index
 
 Date: 2026-09-20. Status: accepted.
+
+removeWhen: the search index moves to a runtime-bundled SQLite (Node's built-in sqlite module, once stable on every supported runtime) and the compiled native binding is gone, so the index is no more fragile than the files.
+derives: axiom 4 (recorded-run)
 
 ## Context
 

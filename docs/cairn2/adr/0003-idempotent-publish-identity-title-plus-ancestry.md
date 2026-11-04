@@ -4,13 +4,16 @@ sidebar_position: 3
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # 0003 — Idempotent publish: identity is title + ancestry
 
 Status: accepted (v2, 2026-07-24)
+
+removeWhen: every supported docs product lets a page carry a caller-supplied stable key that publish can look up, so identity can live on the page instead of being inferred from title and parent.
+derives: axiom 2 (mechanism-vs-judgment)
 
 ## Context
 

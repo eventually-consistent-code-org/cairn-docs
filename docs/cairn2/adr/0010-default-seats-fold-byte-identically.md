@@ -4,13 +4,16 @@ sidebar_position: 10
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.7.0"
+  cairn_version: 9
+  cairn_release: "2.9.2"
 ---
 
 # 0010 — Default seats fold into review, byte-identically
 
 Date: 2026-09-11. Status: accepted.
+
+removeWhen: a major version deliberately drops the promise that unconfigured projects see the pre-roster review output, and the byte-identical pin goes with it.
+derives: axiom 6 (surface-is-rent); axiom 4 (recorded-run)
 
 ## Context
 
@@ -38,5 +41,20 @@ One review path exists.
   change that trips the byte-identical pin.
 - The lenses-vs-council distinction is stated wherever both appear,
   preventing a second council from growing by accident.
+
+## Amendment 2026-10-14
+
+The default roster may grow by signal-gated default seats. The five
+axes stay byte-identical and first, in review's order; a default seat
+added after them must declare at least one scope signal, so under the
+default auto dispatch it sits out whenever its signal does not fire.
+The first such seat is ux (seventh in the roster, after the plan-stage
+interrogation seat), gated on `touches-ui` — presentation files and
+UI-shaped path segments. With the default auto dispatch a server-only
+diff therefore convenes the same five seats it always did, so
+unconfigured projects see identical output unless their diff touches UI
+files. The byte-identical pin now checks the five-first ordering plus
+the signal-gating of every default seat after them; the original
+removeWhen stands.
 
 Commits: a2dfab7 (fold), 8d213b6 (wave-brief reuse).

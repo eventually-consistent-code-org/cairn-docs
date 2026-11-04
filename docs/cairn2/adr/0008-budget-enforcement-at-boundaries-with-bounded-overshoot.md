@@ -4,13 +4,16 @@ sidebar_position: 8
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # 0008 — Budget enforcement at boundaries, with bounded overshoot
 
 Date: 2026-09-04. Status: accepted.
+
+removeWhen: the platform's in-run budget becomes a hard, cross-session spend ceiling that stops headless work at a clean checkpoint and reports what was spent, so the outer boundary ledger duplicates it.
+derives: axiom 2 (mechanism-vs-judgment); axiom 4 (recorded-run)
 
 ## Context
 

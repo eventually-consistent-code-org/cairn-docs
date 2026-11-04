@@ -4,13 +4,16 @@ sidebar_position: 12
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.7.0"
+  cairn_version: 9
+  cairn_release: "2.9.2"
 ---
 
 # 0012 — One finding set, no matter how many seats
 
 Date: 2026-09-11. Status: accepted.
+
+removeWhen: one call can produce the whole panel's findings already merged, matching this engine's output on a recorded corpus. While seats run independently, the duplicates are structural and dedup stays.
+derives: axiom 1 (tracker-truth)
 
 ## Context
 
@@ -42,3 +45,93 @@ pure dependency-free library — no new tool surface.
 - Determinism makes dedup testable under shuffle and safe to re-run.
 
 Commits: b031a97 (dedup engine and closing-discipline wiring).
+
+## Evidence — the sunset test (2026-10-13, #334)
+
+The clause above is now testable: Claude Code ships one call that
+returns a verified, deduplicated finding set (`/code-review` with
+effort levels and `--max-findings all` since 2.1.288, a verify pass,
+per-finding failure scenarios). The recorded corpus exists at
+`evals-corpus/` on the `evals-archive` branch (off `main` since #403;
+`git worktree add evals-archive evals-archive` puts it at
+`evals-archive/evals-corpus/`) — eleven real fix commits, each carried into a
+scaffolded workspace as the files it touched plus its own reversal on a
+`corpus/NN-<slug>` branch, so the diff under review is the defect at the
+point in history where it lived, plus one clean control —
+with two arms over it: the shipped five-seat panel with dedup and
+refutation, and the native call. Recall is the share of runs naming the
+known defect at its file; precision is the pass rate of a judge that
+fails any invented finding (a proxy — the harness keeps no transcript).
+Method and commands: `evals-corpus/README.md` there;
+`scripts/eval-corpus-score.mjs` prints the two numbers per arm.
+
+Decision rule, written before the run: native matches or beats the
+seats on recall without losing precision → the correctness axis is a
+delegation candidate for the next major, and ADR 0010's byte-identical
+default fold holds until then; otherwise the clause stands as unmet
+with the numbers.
+
+**Result (2026-10-14, Claude Code 2.1.299, one run per case, eleven
+items per arm, latest run of each case scored):**
+
+| arm | recall | precision proxy | cost per review |
+|---|---|---|---|
+| seats — five-seat panel, dedup, refutation (`/cairn:review`) | 100% (10/10) | 100% (11/11) | ~$0.75 median |
+| native — `/code-review <branch> high --max-findings all` | 100% (10/10) | 27% (3/11) | ~$0.19 median |
+
+**The clause is unmet.** The native call matches the panel on recall —
+it named the known defect at its file on every item — and loses on
+precision: on eight of eleven items, the clean control among them, it
+raised efficiency notes on untouched code, comment inconsistencies and
+hypotheticals as numbered findings with failure scenarios, and the
+correctness-axis judge failed the run for it. `--max-findings all` is
+the arm as #334 specified it and asks for exactly that breadth; the
+panel's refutation vote and dedup are what the native call lacks, and
+they are what the precision column measures. The native call is ~4×
+cheaper per review, which is the number a future delegation argues
+from. The fairer second shape — the native call at its default finding
+limit — is #372.
+
+How the numbers got here, because the first pass read differently. The
+first full seats run scored recall 70% / precision 73% and the first
+native run 90% / 0%; reading the misses showed three corpus defects,
+each fixed in the generator and rerun for the affected cases only (the
+scorer pools runs, latest per case): the main suite's `audit_record`
+mock answered with a canned foreign record, so the reviewer reported
+the tool instead of filing; the precision grader judged clarity notes
+as invented defects, outside the correctness axis this test scores; and
+the ground truth for items 04, 07 and 10 described the wrong mechanism
+or file (checked against the fix commits, not against the review
+output — all three reviews had named the real defect). Both arms were
+rerun on those items with the corrected graders; the seats' three
+misses and the native's one became passes, and three native runs also
+passed precision where the fuller ground-truth text covered more of
+what they raised. Single-run, judge-scored numbers — the precision
+column in particular is a Haiku judge's verdict per run, stated as a
+proxy.
+
+**Second arm shape (2026-10-18, #372, Claude Code 2.1.303, one run per
+case, eleven items):** the native call at its default finding limit —
+`/code-review <branch> high`, no `--max-findings`, the shape a developer
+actually runs — same graders, same decision rule. Eleven of eleven runs
+graded, none errored. The #334 rows are carried from above (their raw
+runs were local and are gone); the default row is from this run.
+
+| arm | recall | precision proxy | cost per review |
+|---|---|---|---|
+| seats — five-seat panel, dedup, refutation (`/cairn:review`) | 100% (10/10) | 100% (11/11) | ~$0.75 median |
+| native — `--max-findings all` | 100% (10/10) | 27% (3/11) | ~$0.19 median |
+| native at the default finding limit (`/code-review <branch> high`) | 90% (9/10) | 18% (2/11) | ~$0.18 median |
+
+**The clause stays unmet.** The default finding limit did not rescue
+precision: nine of eleven runs, the clean control among them, were
+failed by the correctness-axis judge for raised findings, and recall
+slipped by one item (08, the relative verb paths: judge votes PASS /
+FAIL / FAIL, left as scored; the harness kept no transcript to
+re-read). The default limit trims the breadth of the list, not the
+kind of finding on it. Single-run, judge-scored, so the same proxy
+caveat as above applies. Nothing in `review.md` or the seats changed.
+
+Either way the other four axes, tracker filing, the audit record and
+refutation voting are outside what the native call can see, and this
+ADR's dedup stays while any two seats run.

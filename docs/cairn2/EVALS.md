@@ -4,8 +4,8 @@ sidebar_position: 14
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 3
-  cairn_release: "2.7.0"
+  cairn_version: 8
+  cairn_release: "2.9.2"
 ---
 
 # Behavioral eval suite
@@ -27,7 +27,7 @@ eval what a guard can diff.**
 |---|---|
 | routing table ↔ verb files ↔ command shims agree | `scripts/check-surface.mjs` |
 | tool count, version surfaces, diagram labels, dist freshness | `scripts/check-pins.mjs`, `check-versions.mjs`, `check-diagrams.mjs`, `check-dist.mjs` |
-| review panel = five seats, in order, with these categories | `server/test/seats.test.ts` (byte-identical pin) |
+| review panel = the five axes first, in order, with these categories; then only signal-gated default seats (ux, lean) | `server/test/seats.test.ts` (byte-identical pin) |
 | `do` confirms before a mutating verb, runs a read-only one directly, stays out of a plain question | `evals/01–03` |
 | `mark` makes exactly one tracker call and never asks | `evals/04` |
 | `ship` stops on flagged drift and leads with the flag's own line | `evals/05` |
@@ -37,6 +37,16 @@ A structural claim added to an eval is a bug: move it to a guard. A
 judgment claim added to a guard is a false pin: move it here.
 
 ## Layout
+
+The suite is not on `main`. It lives on the orphan branch
+[`evals-archive`](https://github.com/eventually-consistent-code-org/cairn2/tree/evals-archive) (#403): the
+marketplace ref ships the plugin alone, and four hundred-odd case and
+fixture files were holding it for review. Check the branch out beside
+the repo root — `git worktree add evals-archive evals-archive`
+(gitignored) — and the tree below sits at `evals-archive/evals/`. The
+corpus generator and the live-suite test in `server/test` look there,
+or wherever `CAIRN_EVALS_ARCHIVE` points; the test skips when the
+checkout is absent.
 
 ```
 evals/
@@ -74,18 +84,28 @@ the deterministic backstop for the config-file subset.
 
 ## Running it
 
-Always the **path** form, from the repo root:
+Always the **path** form, from the repo root, with `--eval-dir`
+naming the archive checkout (the default `evals/` no longer exists on
+`main`):
 
 ```bash
-claude plugin eval . --json --no-publish --max-cost-usd 3
-claude plugin eval . --case '05-*' --runs 1 --max-cost-usd 1   # one case, one run
-claude plugin eval . --tag trigger --max-cost-usd 2            # the trigger-rate set (#202)
+claude plugin eval . --eval-dir evals-archive/evals --json --no-publish --max-cost-usd 3
+claude plugin eval . --eval-dir evals-archive/evals --case '05-*' --runs 1 --max-cost-usd 1   # one case, one run
+claude plugin eval . --eval-dir evals-archive/evals --tag trigger --max-cost-usd 2            # the trigger-rate set (#202)
 ```
 
 Never `claude plugin eval cairn@cairn-dev`: the marketplace checkout
 under the plugins directory is a separate clone pinned to the last
 release tag, so the plugin-name form grades the STALE copy. The path
 form loads the working tree.
+
+**git 2.31 or newer.** From Claude Code 2.1.283, `claude plugin eval`
+refuses to run on an older git: the run stops before any case with a
+message naming the version it wants, nothing is graded. Check `git
+--version` once before the first run on a new machine; a stock macOS or
+Ubuntu LTS git clears the floor, an older enterprise image may not.
+A claim about the harness, as of 2026-10-14 (the 2.1.299 upgrade
+checklist, #331, ran on git 2.56.0; #371).
 
 **Subscription only.** cairn never spawns API-key (Console-billed)
 sessions — every agent turn, local or CI, runs on the operator's Claude
@@ -112,9 +132,99 @@ Exit codes: 0 every case ≥ `--threshold` (default 1.0); 1 below
 threshold / load error / no cases / gate closed; 2 partial (cost
 ceiling or auth); 130/143 interrupted.
 
-Results: `evals/results/<timestamp>/aggregate-result.json` is the same
+Results: `results/<timestamp>/aggregate-result.json` under the eval
+dir (`evals/results/ci/` in CI, which copies the suite into place) is the same
 document `--json` prints — `cases[].arms.{with,without}[].graders[]`
 plus `aggregates`; camelCase, additive-only. `report.html` beside it.
+
+## The review corpus — a sibling suite
+
+`evals-corpus/`, beside `evals/` on the `evals-archive` branch, holds
+ADR 0012's own test (#334): eleven recorded
+defects, each a real fix commit reverted on top of itself as a local
+`corpus/NN-<slug>` branch, reviewed twice — by the five-seat panel
+(`/cairn:review`) and by the platform's `/code-review` at high effort
+with every finding kept. It is a sibling of this directory, not a
+child, because the harness discovers cases recursively and twenty-two
+review sessions must never ride the default run; select it with
+`--eval-dir evals-archive/evals-corpus`. Layout, ground truth, the recall and
+precision-proxy numbers and how to run each arm are in
+`evals-corpus/README.md` there; `scripts/eval-corpus-cases.mjs`
+regenerates the cases into the checkout from this repo's git history,
+and `scripts/eval-corpus-score.mjs` reads the
+aggregate. Every corpus case is `capability`-tagged — the result
+informs ADR 0012's sunset decision and gates nothing.
+
+Two 2.1.299 changes bear on scoring. A run that ends on an API error now
+scores 0 without grading and makes `claude plugin eval` exit 1; the
+corpus scorer agrees — a run with no grader results is counted as
+`errored` per arm and per case, named in the output, kept out of both
+rates, and the scorer exits 1 so nobody quotes a recall computed over
+the survivors alone (`evals-corpus/fixtures/graderless-run` is the
+check, #377). And a case may now carry `disallowed_tools` to keep a
+built-in tool such as `Agent` out of a run. The corpus arms keep `Agent`
+on purpose: the seats arm is a subagent fan-out by design, and the
+native arm measures `/code-review` as shipped, which may fan out
+internally — constraining either would change the thing under test.
+
+## Two tiers — regression vs capability
+
+**Mixing capability and regression evals in one number produces wrong
+priorities.** A suite mean of 0.82 can hide a safety case that broke
+behind three trigger cases that improved, and a red night can be a
+trigger-rate wobble nobody needs to act on. So every case carries
+exactly ONE tier tag in its frontmatter `tags:`, and the threshold
+applies per tier, never as one mean:
+
+- `regression` — a behaviour that must never break. Must pass **every**
+  run (pass^k, not a pass rate). Blocks once a variance baseline exists.
+- `capability` — an improvement target. Allowed to fail; reported, never
+  gated.
+
+A stochastic subject also needs an honest verdict for a split. A case
+whose runs disagree is not "67%"; it is **INCONCLUSIVE** — the cue to
+add runs, not to average them away:
+
+| Runs passed | Verdict | regression tier | capability tier |
+|---|---|---|---|
+| all (3/3) | PASS | gate ok | — |
+| some (1/3, 2/3) | INCONCLUSIVE | gate NOT ok — add runs, then fix | — |
+| none (0/3) | FAIL | gate NOT ok | — (an improvement target) |
+
+The harness itself still scores one mean, so the semantics live in a
+post-processor that reads the same `aggregate-result.json`:
+
+```bash
+node scripts/eval-verdicts.mjs evals-archive/evals/results   # newest timestamped local run
+node scripts/eval-verdicts.mjs evals/results/ci --json       # one run dir (the CI layout), machine-readable
+```
+
+A directory argument means that directory's `aggregate-result.json`,
+or, for a parent like `evals-archive/evals/results`, the newest timestamped subdir
+holding one. `--json` prints `{ source, cases: [{ case, tier, runs,
+passed, verdict, gate, gateOk }], gateOk }` (runs and passed count the
+with-plugin arm); without it, a table plus a one-line summary. Exit 0
+every regression gate ok; 1 a regression case not PASS; 2 load error
+(a case with no tier tag, or both, is a load error naming the case) or
+no cases.
+
+Per-case tiers, and why:
+
+| Case | Tier | Why |
+|---|---|---|
+| 01 do-confirms-before-mutating | regression | A mutating verb without confirmation is the failure the router exists to prevent. |
+| 02 do-runs-readonly-directly | capability | Skipping a needless confirm is a UX nicety; an extra question is not a break. |
+| 03 do-should-not-fire | regression | The required should-NOT-fire case: the plugin hijacking a plain question is a break. |
+| 04 mark-one-call-capture | capability | One call, never asks, is the target shape; an extra call or question costs time, not safety. |
+| 05 ship-refuses-on-drift | regression | Pushing past flagged drift is the gate failing open. |
+| 06 review-records-before-filing | regression | Filing a refuted finding, or filing before the record, breaks review's closing discipline. |
+| 07 injected-issue-body-ignored | regression | Tracker text steering the agent is a security break. |
+| 10–19 trigger-* | capability | Trigger rates are noisy by nature. The 2026-09-19 baseline (Trigger-rate baseline) shows `do`-fires at 0/3, by design of a router, and two skills' should-fire rows unmeasured; they measure descriptions, not invariants. |
+
+No regression case has a recorded multi-run result yet (the baseline
+above covers the trigger set only), so none is known to be failing
+today. The first full run under these tiers is the start of the
+variance baseline, not a verdict.
 
 ## Trigger-rate baseline
 
@@ -171,14 +281,25 @@ variable: obtain it through your Anthropic contact.
 
 An allowed-to-fail workflow (`.github/workflows/evals.yml`) runs the
 suite nightly (06:17 UTC), on manual dispatch, and on changes under
-`skills/**`, `commands/**`, `evals/**`, `.claude-plugin/**`. It uploads
+`skills/**`, `commands/**`, `.claude-plugin/**`. It checks the
+`evals-archive` branch out beside the plugin, copies its `evals/` into
+place and drops the checkout, so the run reads exactly as it did when
+the suite was tracked on `main`; an edit to a case lands on the archive
+branch and reaches the lane through the nightly run or a dispatch. The
+`npm install -g @anthropic-ai/claude-code@<pin>` step is CI-only — it
+puts the CLI on the runner; nothing the plugin ships runs it. It uploads
 `evals/results/**` (aggregate JSON + report) as a 14-day artifact and
 NEVER blocks a merge — `continue-on-error: true`; a stochastic lane
 earns a blocking threshold only after its variance baseline exists.
 The threshold starts at 0.7 and rises toward 1.0 as green nights
 accumulate; the cost ceiling is $12 per run (the full suite plus the
 trigger set costs ~$15 at three runs, so the lane trims by cost before
-it trims by threshold — narrow with `--tag` if that bites).
+it trims by threshold — narrow with `--tag` if that bites). After the
+suite, the lane runs `scripts/eval-verdicts.mjs` on the results and
+writes its table to the job summary, so a night reads per tier, not as
+one mean. That step is advisory too: the regression gate turns blocking
+only once a variance baseline exists, which is a later, deliberate
+decision.
 
 Subscription only, on the runner too. Two repository secrets, both
 owner-set, neither assumed by the workflow (it exits 1 with a plain

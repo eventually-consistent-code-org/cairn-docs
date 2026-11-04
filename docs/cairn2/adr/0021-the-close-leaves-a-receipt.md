@@ -4,13 +4,16 @@ sidebar_position: 21
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 1
-  cairn_release: "2.7.0"
+  cairn_version: 6
+  cairn_release: "2.9.2"
 ---
 
 # 0021 — The close leaves a receipt; the append consumes it
 
 Date: 2026-10-02. Status: accepted.
+
+removeWhen: the durable per-task outcome record lands and both the close and the ledger append write into it directly, leaving the bridge receipt nothing to carry.
+derives: axiom 4 (recorded-run); axiom 1 (tracker-truth)
 
 ## Context
 

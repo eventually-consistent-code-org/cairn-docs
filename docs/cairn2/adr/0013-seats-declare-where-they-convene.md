@@ -4,13 +4,16 @@ sidebar_position: 13
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.7.0"
+  cairn_version: 9
+  cairn_release: "2.9.2"
 ---
 
 # 0013 — Seats declare where they convene
 
 Date: 2026-09-13. Status: accepted.
+
+removeWhen: never — when a viewpoint is useful (against a draft plan or against a diff) is a property of the work, not of model capability.
+derives: axiom 2 (mechanism-vs-judgment)
 
 ## Context
 

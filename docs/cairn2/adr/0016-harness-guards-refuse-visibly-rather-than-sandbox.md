@@ -4,13 +4,16 @@ sidebar_position: 16
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 3
-  cairn_release: "2.7.0"
+  cairn_version: 8
+  cairn_release: "2.9.2"
 ---
 
 # 0016 — Harness guards refuse visibly; they do not pretend to be a sandbox
 
 Date: 2026-09-20. Status: accepted.
+
+removeWhen: the platform isolates agent configuration at the operating-system level in every session and every harness cairn runs in — the agent process cannot write its own hooks or settings, and the human edits them through a channel the agent cannot reach — so the visible-refusal hooks become redundant. Half met (SURVEY.md 2026-10-13, native-vs-cairn-subsystem-judgement): Claude Code's sandbox now blocks writes to the `.claude` settings, hooks, skills, agents, commands, `.mcp.json`, `.git/hooks` and `~/.claude` at the OS level, for sandboxed Bash only. Still open: auto mode (the default since 2.1.284) routes a protected-path write to a steerable classifier rather than a wall; non-sandboxed sessions and the Edit/Write/MCP paths outside the sandbox; the seven other harnesses.
+derives: axiom 5 (owner-ground); axiom 3 (data-not-directive); axiom 4 (recorded-run)
 
 ## Context
 
@@ -62,3 +65,138 @@ covering the other's ground.
 Cost: an operator who genuinely wants a harness edit pays one flag. That
 is the intended friction, and the refusal text is written to make the
 question — did you actually ask for this? — the thing they read first.
+
+A git hook is harness configuration too (#353, 2026-11-03). The folder
+git runs its hooks from — `core.hooksPath` when set, else `.git/hooks`
+— joins the harness guard's protected set under the same escape and the
+same refusal shape: one line naming the file, saying it is a git hook
+that runs at the next checkout or commit, then the question of where
+the instruction came from. Asserted in `server/test/hooks.test.ts`
+("harness guard protects git hooks (#353)"); `audit security --surface`
+reads the same folder.
+
+Fail-open is half cairn's and half the platform's, and the two halves
+now point different ways. A guard's own error exits 0 — a broken guard
+never blocks work (asserted: `server/test/runguard-effects.test.ts`
+"fails open", `server/test/runguard-guards.test.ts` "garbage stdin
+fails open"). Claude Code's command hooks have offered `onFailure:
+"block"` since 2.1.295 — a hook that cannot start, times out or exits
+with an unexpected code then blocks the action — and `hooks/hooks.json`
+leaves it unset by design: setting it would invert this decision, so
+the absence is the decision, not a gap. Since 2.1.299 the platform
+fails closed on the delivery half regardless: when it cannot hand a
+guard its payload or read its answer back, an action the guard could
+have blocked is refused, and on Windows a PreToolUse hook with no shell
+blocks the call. The sentence to carry is "fails open on its own error;
+the platform fails closed when it cannot reach the guard or read its
+answer." The platform half is a claim about the harness, dated
+2026-10-14 from the 2.1.299 changelog (#371).
+
+## Amendment 2026-10-21 — the run guard is described by effect (#359)
+
+The decision stands; this changes how the run guard is described and
+built, not what it buys. Cairn stays in the "refused at runtime" tier:
+the classification below makes the run guard's refusals derivable and
+auditable, not airtight.
+
+Its rules used to be an enumerated table, one row per flag spelling and
+one issue per row. Every spelling that discarded work and was not in the
+table slipped through until someone filed the next issue. The run guard
+now classifies each git invocation by what it does, from git's own
+semantics (shortened long options, short clusters, `+refspec`, whole-tree
+pathspecs), into three effects, with `read-only` the default:
+
+- **discards-work** — uncommitted or unpushed work lost with no undo.
+  Refused in every session; the owner's escape is unchanged.
+- **moves-shared-ref** — the default branch or any remote ref changes.
+  Refused onto the default branch without a clean ship-gate stamp, and
+  while a run is live without the push authority granted at staging.
+- **touches-owner-checkout** — the human's working directory changes under
+  them. Refused while a run is live, aimed at the owner's checkout.
+
+The table is data a classifier reads (`hooks/scripts/git-effects.mjs`),
+and the refusals reference effects only. Every refusal names the effect
+and the flag that caused it, so a reader can audit why it fired; a hard
+reset of the owner's checkout carries both of the first and third, and
+says so. The everyday neighbours (`stash drop`, `branch -D`, a single-path
+restore, `clean -n`) carry no discarding effect and stay allowed, as
+before. As with every hook, a classifier that breaks lets the command
+through rather than blocking work. Each of these is asserted in
+`server/test/runguard-effects.test.ts`; the per-issue suite
+`server/test/runguard-guards.test.ts` stayed green unchanged through the
+rewrite.
+
+## Amendment 2026-10-22 — the circuit breaker (#358)
+
+The decision stands: a guard still refuses the one call in front of it,
+visibly, and is still not a sandbox. What changes is that refusals now
+add up. A headless run that keeps pushing past the ship gate, or keeps
+reaching for its own hooks, is a run whose plan has gone wrong, and
+before this it carried on until the budget or the phase ran out.
+
+Every refusal from the run, harness and leak guards appends one row to
+a refusal log under the cairn home — when, which guard and tool, the
+effect refused, fixed reason text, the session, the live run, and a
+sha256 of the tool input, never the command or path itself. While a
+batch run is live, the rows from the session its manifest names -- the
+one that staged it (#431) -- are counted; at the limit staged into its
+manifest (`auto.breaker` as it read at staging, default 3, `0` off; read
+from the manifest and never from cairn.json mid-run, so the run cannot
+switch its own breaker off, #433) the guard freezes the run by writing
+its manifest: `stopped`, with the reason and the last three rows. The
+breaker is the only freeze authority cairn has, and it is scoped to
+headless runs: a session with
+no live run, or one the manifest does not name, is never counted and
+never frozen. A frozen run's own session is refused pushes by the run
+guard, and its claims and closes return `RUN_FROZEN` from the server.
+
+The seam, stated because it is not obvious: the hooks import no server
+code and have no tracker access, so they read the run manifest straight
+from the cairn home and write the freeze into it themselves, and the one
+plain-language comment the freeze owes is posted by the server, on the
+first claim or close the frozen run attempts, once, flagged in the
+manifest.
+
+Like every hook it fails open, in both directions: a breaker that
+breaks never blocks a call and never un-blocks one; a refusal log it
+can't use means no breaker for that run, said once. Cairn stays in the
+"refused at runtime" tier — this makes refusals derivable and
+auditable, not airtight. It adds axiom 4 (recorded-run) to this
+record's derivation: the refusals and the freeze are written where the
+owner looks, not just shown once and lost. Asserted in
+`server/test/hooks.test.ts` ("circuit breaker"), with the server half in
+`server/test/run-breaker.test.ts` and `server/test/run-manifest.test.ts`.
+
+## Amendment 2026-11-03 — the server's own comments pass the leak screen (#374)
+
+The decision stands; this closes a gap it left open. The leak guard
+screens what an agent commits (the commit-time hook) and what it sends
+to an outside reviewer (`peer_run`'s outbound gate, #268). The claim and
+close comments used to be the agent's to write under that same
+discipline; when the server took them over (#343, #365) they walked out
+from under it, and a plan's verify line naming a planning-folder file
+reached a public tracker twice, as written, on one issue.
+
+Every comment the server composes now runs through the same pattern set
+before `commentIssue`. Where `peer_run` refuses a hit, the comments
+redact it: the private token becomes a kind-named placeholder
+(`[redacted cairn-path]`), and the post reports what it redacted
+(`claimCommentRedacted`, `commentRedacted`). Refusal was the wrong shape
+here for two reasons. The agent cannot rewrite its way around the hit —
+the plan's verify line *is* the bar, quoted back so it is visible up
+front, and the close evidence is that same line run — so a refusal
+would only trade the leak for a comment with no bar in it and a
+duration ladder that lost its first rung. And the exact text is not
+lost: the ledger line under the planning folder, git's record, keeps it
+verbatim; only the tracker copy is screened. The one refusal that
+remains is a hit the placeholder itself trips (a user pattern matching
+"redacted"), which cannot be redacted away and so is not posted — typed,
+naming the kind, never the text.
+
+Still not a sandbox: the screen is the hook's pattern set, so it catches
+planning paths, phase refs, cairn labels and a Jira project key, plus
+what `leakGuard.extraPatterns` adds, and nothing else; `leakGuard.
+enabled: false` switches it off here as everywhere. Asserted in
+`server/test/measured-duration.test.ts` ("server-composed comments pass
+the leak screen before posting") and `server/test/leak-patterns.test.ts`
+("redactLeaks"). The two live comments stay the owner's call to edit.

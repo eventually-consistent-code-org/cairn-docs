@@ -4,13 +4,16 @@ sidebar_position: 5
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # 0005 — Docs drift is computed detection; generation is the remedy
 
 Date: 2026-09-01. Status: accepted.
+
+removeWhen: never for detection — a deterministic staleness signal stays cheap and useful at any model strength. The ship-time generation step can go once the model keeps changelog and docs current unprompted, shown by a milestone where the drift report flags nothing with generation switched off.
+derives: axiom 2 (mechanism-vs-judgment); axiom 4 (recorded-run)
 
 ## Context
 

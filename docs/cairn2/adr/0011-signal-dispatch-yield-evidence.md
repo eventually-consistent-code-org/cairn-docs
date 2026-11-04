@@ -4,13 +4,16 @@ sidebar_position: 11
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.7.0"
+  cairn_version: 9
+  cairn_release: "2.9.2"
 ---
 
 # 0011 — Signals pick the seats; yield evidence retires them; blast radius always wins
 
 Date: 2026-09-11. Status: accepted.
+
+removeWhen: running the full panel on every diff costs little enough in tokens and time that gating saves nothing worth the risk of muting a seat; then the dial stays at off and the yield gate can be retired.
+derives: axiom 2 (mechanism-vs-judgment); axiom 4 (recorded-run)
 
 ## Context
 

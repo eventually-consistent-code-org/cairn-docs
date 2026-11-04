@@ -4,13 +4,16 @@ sidebar_position: 19
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 1
-  cairn_release: "2.7.0"
+  cairn_version: 6
+  cairn_release: "2.9.2"
 ---
 
 # 0019 — A check that cannot fail is worse than no check
 
 Date: 2026-09-20. Status: accepted.
+
+removeWhen: never — a guard that cannot fail is decoration whoever writes it. The open gap it names closes when the declared-verification gate resolves each command to real tests; the principle stays.
+derives: axiom 4 (recorded-run)
 
 ## Context
 

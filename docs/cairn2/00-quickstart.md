@@ -4,8 +4,8 @@ sidebar_position: 1
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # Quickstart
@@ -36,21 +36,14 @@ can't survive a crash.
 In Claude Code:
 
 ```
-/plugin marketplace add eventually-consistent-code/cairn2
+/plugin marketplace add eventually-consistent-code-org/cairn2
 /plugin install cairn@cairn-dev
 ```
 
-Then build the MCP server the plugin launches — the one manual build step:
-
-```bash
-cd ~/.claude/plugins/cache/*/cairn/*/server   # cache/<marketplace>/<plugin>/<version>
-npm ci
-npm run build
-```
-
-Why: the plugin's `.mcp.json` starts `server/dist/index.js`, and `dist/`
-is produced by that build. Restart Claude Code afterward so the server
-connects.
+Restart Claude Code afterward so the MCP server connects. The server's
+`dist/` is committed and the installer installs its runtime dependencies,
+so there is no build step. (Running from a plain source checkout instead?
+Run `npm ci && npm run build` in `server/` first.)
 
 ## Step 2 — create your tracker credentials (outside Claude)
 
@@ -62,8 +55,10 @@ Cairn never stores secrets in config files — only the *names* of environment
 variables. Create a token for your backend and export it in your shell
 profile:
 
-- **GitHub**: `gh auth login`, or export `GITHUB_TOKEN` with a PAT that has
-  repo + issues scope.
+- **GitHub**: in Claude Code the plugin asks for the token when you enable
+  it (`/config` → cairn → GitHub token; a PAT with repo + issues scope),
+  or leave that blank and `gh auth login` once. Other harnesses read
+  `GITHUB_TOKEN` from the environment.
 - **GitLab / Asana / Azure Boards / ClickUp**: create a personal access
   token in the product's settings and export it under the env var named in
   your config (`GITLAB_TOKEN`, `ASANA_TOKEN`, `AZURE_DEVOPS_PAT`,

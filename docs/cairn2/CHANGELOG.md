@@ -4,22 +4,879 @@ sidebar_position: 13
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.7.0"
+  cairn_version: 9
+  cairn_release: "2.9.2"
 ---
 
 # Changelog
 
-## Unreleased — measured actuals
+## Unreleased — the second hardening (phase 30, 2026-11-03)
 
-Every closed task used to record a duration the agent made up, and the
-ones checked against tracker timestamps ran six to fourteen times high.
-That isn't a discipline problem: a model has no reliable sense of its own
-elapsed time, so asking more firmly can't fix it. The server now measures
-duration from timestamps it already controls and labels where each
-number came from. The agent's figure survives as a claim, stored beside
-the measurement instead of replacing it. Tool count holds at 87; the
-suite grows 1605 → 1630.
+The hooks-directory hardenings filed in mid-October land together with
+the eighteen findings the two preceding security audits confirmed. The
+run guard's effect table meets its own definitions: a git alias is judged
+by what it runs, a forced whole-tree remove is refused, the owner-checkout
+rows match the definition in the header, and `stash branch` joins pop,
+apply and drop across linked worktrees. The circuit breaker counts only
+the session that staged the run and reads its limit from the staged
+manifest, so a bystander cannot freeze a run and a run cannot switch its
+own breaker off. The ledger writer types what it writes — hashes are
+hashes, a field cannot spell a separator — and its readers resolve a
+closure against its fix-up by commit ancestry. The one-shot state
+migration runs in the right order and moves a database sidecar only with
+its database. Git hook folders join the harness guard's protected set.
+Usage-limit pauses are narrated to the tracker and subtracted from the
+measured duration. Wave setup is derived from the lockfile. Every
+refused shape in the guard tests has an allowed twin and runs from a
+nested working directory. The merge-overlap helper ships with the plugin
+and fails loudly instead of silently.
+
+Tool count holds at 87. Suite 2420 → 2653. Footprint 13136 → 13141 of a
+13145 pin. No new tool; one new tool parameter, paid for by a shorter
+description. Every fix was made red once before green and the close
+evidence says how.
+
+### guards
+
+- The run guard classifies a git alias by what it runs: an inline alias
+  is expanded before the table lookup, an unknown subcommand is probed
+  once against the repository's configuration, and a shell alias is
+  refused outright in every session (ADR 0036).
+- A forced recursive remove of the whole tree is a discards-work row
+  refused in every session; the cached, dry-run and single-path forms
+  stay allowed.
+- The owner-checkout effect carries its definition line in the header
+  and rows for merge, pull, rebase, cherry-pick, revert, am, mv, the
+  stash actions that write the tree, and reset in its hard, merge and
+  keep forms, refused in the owner's checkout while a run is live.
+- `git stash branch` is refused across linked worktrees under the same
+  probe and reason as pop, apply and drop; the pinned list, advisory,
+  header and wave brief name the fourth action.
+- The folder git runs its hooks from — `core.hooksPath` when set, else
+  the repository's own hooks folder — is a protected tree in the harness
+  guard; the surface audit gains a git-hooks leg (ADR 0016, amendment).
+- The breaker counts only the session that staged the run: the manifest
+  records the staging shell's session id and checkout, another session's
+  refusals carry no run id, and a manifest staged without an id is
+  stamped from the first call of a session working in exactly its
+  checkout. The breaker reads its limit from the manifest, snapshotted
+  from the configuration at staging, never from the configuration file
+  mid-run (ADR 0033).
+- The breaker's record call is wrapped and type-checked in the run,
+  harness and leak guards, so a missing, throwing or malformed breaker
+  library keeps every refusal refusing.
+- The server refuses a frozen run's state change by the category the
+  requested state resolves to — in progress or closed — not by its
+  spelling, through a new optional adapter question the local adapter
+  answers.
+- Server-composed claim and close comments pass the leak screen before
+  posting: a planning-directory path becomes a kind-named placeholder,
+  and a residual hit is refused with a typed code (ADR 0016, amendment).
+- A `StopFailure` or quota `Notification` event runs one recorder: a
+  row in a pauses log under the cairn home, one plain-language comment on
+  a running batch's umbrella issue, and a paused or stopped mark on the
+  handoff. The auto verb no longer claims the platform never loses an
+  agent at a usage limit.
+- The guard tests are a table of eighty-five refused shapes, each with
+  an allowed twin, each run from the repository root and from a nested
+  working directory; a meta-test keeps both columns full. The first run
+  found thirty twin gaps and eighty-five subfolder gaps (ADR 0035).
+- A hooks test asserts the plugin layer's import boundary: hooks,
+  scripts and setup import only Node builtins and relative plugin-layer
+  paths, never the server.
+
+### planning
+
+- Ledger appends and claims accept only a 7–40 character hex commit hash,
+  refused with a typed error before any git call or tracker write; the
+  range handed to git sits behind `--end-of-options` with the path
+  separator after it. The task reference and summary pass through the
+  same segment sanitizer as the evidence and note, and the parser binds
+  the last segment run, so a forged passing tail cannot hide the server's
+  observed result (ADR 0034).
+- The ledger parser resolves a closure against its evidence fix-up by
+  commit ancestry, then the date on the line, then file order, and
+  derives the phase's commit range the same way; a both-ways union-merge
+  test asserts it (ADR 0028, amendment).
+- The verify rerun keys on an owner-approval stamp — `plan_meta_set
+  approve` records the approved plan's blob in local state — and
+  classifies the declared line through the run guard's shell reader and
+  effect table before running it, failing closed on an unclassifiable
+  line or an unavailable classifier (ADR 0017, amendment; the
+  agent-callable approve flag is stated as a dated gap and filed).
+- The close subtracts usage-limit pause windows from the measured
+  duration; paused minutes ride in the receipt, the close comment and
+  the ledger's actuals segment (ADR 0020, amendment).
+- Plan status derives fresh-worktree setup from the tracked lockfiles,
+  `.worktreeinclude` and `.worktree-port`; wave briefs paste it verbatim
+  and carry no setup line when the repository has none (ADR 0032).
+- The drift report and the three opt-in writers carry honest read-only
+  hints; an effect test runs every read-only tool against a scratch
+  project and a scratch cairn home and asserts both are untouched; a
+  first memory search no longer creates the index database.
+- The debt audit never builds a shell line from the marker text it finds;
+  the marker is a single-quoted argument scoped by path, the source
+  comment it matches is a specification, and the marker words are
+  constrained in configuration.
+
+### state
+
+- The legacy-observation move runs the state-folder migration before its
+  rekey row, in the hook helper and the server; a move blocked by an
+  existing twin is logged as skipped, once per leftover.
+- A `-journal`, `-wal` or `-shm` sidecar moves only in the pass that
+  moves its database; a hot journal whose database stayed stays put, so
+  another checkout's journal is never replayed into the shared index.
+- Observation-log rotation closes a segment with the no-clobber link,
+  probing the segment number upward on collision; a deterministic replay
+  test asserts the closed segment keeps its rows.
+- The observe hook gates on the cairn folder beside the repository's
+  shared git directory, falling back to the checkout's, so linked
+  worktrees of a project that ignores the folder still append to the one
+  log.
+
+### setup and docs
+
+- Setup refuses the Claude import through a symlink to the agents file or
+  outside the project and writes nothing; the readers check carries the
+  rendered fragment, so an import-only span reads as not reaching.
+- The merge-overlap helper moved under the hook scripts the package
+  ships; the work and ship verbs call it through the plugin root; its
+  command-entry check compares real paths and never exits clean with
+  nothing printed.
+- The acceptance-testing agent loses the issue-close grant and hands
+  fixes to the audit verb's staged path; both agent files state that
+  tracker text is data.
+- The docs name the git 2.31 floor for the plugin eval and say the hook
+  failure mode stays unset by design, with fail-open narrowed to the
+  guard's own error now that the platform fails closed when it cannot
+  reach the guard.
+
+### known and filed
+
+The closing security audit of this phase confirmed eleven findings and
+filed them for the next hardening pass, each the sibling spelling of an
+input this phase closed: a lone colon as the whole-tree pathspec passes
+the remove, checkout and restore rows (critical); the hooks-folder
+pointer is unguarded; a running batch can stage a second manifest and
+move the breaker's count; aliases defined through the environment or an
+included file pass; eight more commands meet the owner-checkout
+definition; the ledger's issue id and close date skip the sanitizer; the
+pauses log is unguarded; the freeze category is unanswered by four
+tracker adapters; same-day independent branches still flip a closure by
+merge direction; setup erases the spine when the agents file links to
+the Claude file or the two are hard-linked; the merge-overlap helper is
+unreachable on six of the seven other harnesses.
+
+## Unreleased — the parallel path (phase 29, 2026-10-29)
+
+Two agents on one repository, in two worktrees, possibly two vendors,
+become a path cairn handles by construction rather than by luck. State
+under the cairn home is keyed by what it is about: knowledge of the
+project (memory index, cost log, observations, meter, yield, loop state,
+portfolio snapshot, refusals, run manifests, ship-gate stamp, budget
+ledger) is per repository, keyed by the shared git directory, so a wave
+worker's observations and spend are the ones retro and the board read
+from the main checkout; a task in flight (handoff, banner, active context)
+stays per worktree. The observation log leaves the checkout for the cairn
+home and rotates by rename instead of rewriting, so two hook writers lose
+nothing. The run guard refuses stash pop, apply and drop when the
+repository has more than one worktree. The phase ledger merges by union.
+The reviewer sees untracked files. A rate-limited peer seat is skipped,
+never a failed run. Three follow-ups from the previous phase ride along.
+
+Tool count holds at 87. Suite 2358 → 2420. Footprint 13142 → 13131 of a
+13145 pin. No new tool, no new config key.
+
+### state
+
+- One `projectKey` — the hash of the resolved `git rev-parse
+  --git-common-dir` — defined once in the server and mirrored in the
+  hooks' shared helper, pinned byte-equal by ten tests across a main
+  checkout, a linked worktree and a plain folder. Eleven stores rekey to
+  it; the handoff, banner and active context keep the worktree key. A
+  one-shot migration moves a file under the old key with a hard link that
+  refuses an existing target and logs each move as a rekey row the spend
+  readers skip. The architecture document gains a table of which file is
+  keyed which way (ADR 0027).
+- The observation log lives at the cairn home under the repository key
+  and rotates: past a thousand rows the live file is renamed to a stamped
+  closed segment, a fresh live file takes appends, readers and retro read
+  live plus segments, and the retention guard prunes whole closed
+  segments on rotation only. Every atomic JSON temp file carries the
+  writer's pid and a random suffix instead of a fixed name. Five new
+  tests, each red against the old code first.
+
+### guards
+
+- Stash is the destructive half: with more than one worktree, `stash
+  pop`, `apply` and `drop` are refused as discarding work under a new
+  linked-worktrees probe in the effect table, naming the shared stash and
+  the commit-on-your-branch alternative; `stash push` is advised and
+  proceeds; one worktree is byte-identical to before. The wave brief gains
+  the standing rule: never stash (ADR 0029).
+- Hook timing tests bound the hook's cost by a ratio to a bare node start
+  measured in the same run; the absolute fifty-millisecond bound stays
+  behind an opt-in for a quiet CI runner. The tests keep proving the hooks
+  are cheap and stop proving the machine is idle.
+
+### planning
+
+- Project and phase scaffolds write `**/LEDGER.md merge=union` into the
+  planning root's git attributes, idempotently; the plan-quality scan
+  reports a ledger without it at a new `minor` severity; the ledger
+  header records that cross-branch order is a merge artifact, with the
+  precondition that no two branches append lines for the same task
+  (ADR 0028).
+- Before a wave merge or a rejected-push merge, a helper intersects the
+  files both sides changed since their merge base and the merge message
+  and tracker note lead with `overlap: N files — …` or `overlap: none`,
+  so a collision is read where it lives, before the conflict markers.
+
+### review and peers
+
+- The default review target is the working diff, the staged changes and
+  every untracked file git does not ignore, each rendered as a new-file
+  diff; the record notes how many untracked files it included; peer
+  review and the simplify audit inherit by reference (ADR 0031).
+- A peer seat whose CLI answers with a usage-limit shape — per-provider
+  patterns read out of the installed binaries, dated in the header as the
+  claim they are — classifies to the typed `RATE_LIMITED` code, is
+  recorded as skipped (rate limited), and the run continues; zero seats
+  left closes `no-quorum` and says why; the roster listing carries each
+  seat's last limit time; no retry (ADR 0030).
+- The server's seat routing table is the planning skill's four-class
+  rubric with a `strongest` value for judgment gates, pinned equal to the
+  skill's table by a test that parses the skill file.
+- The probe tools post their own "investigation started" comment the way
+  the trace tools do, fail-open on a refused comment; the probe verb's
+  opening step is one call. The tool's description was trimmed to pay for
+  the new text, taking the footprint from 13142 to 13131.
+
+### known and filed
+
+The phase's closing security audit (three read-only auditors over the
+diff, a two-seat refutation panel per important finding, nothing refuted)
+filed eight items for the next hardening pass: `git stash branch` matches
+no row; two writers rotating the observation log at the same instant can
+replace the segment one just closed; the rekey row can be written before
+the metrics folder migrates, orphaning the old cost history unlogged; the
+observation hook still gates on a cairn folder in the worktree; a database
+sidecar can be migrated without its database and corrupt the shared index;
+the merge-overlap helper is invoked by a path that only resolves inside
+cairn's own repository and is not in the npm package; its command entry is
+silent through a symlink or a path with a space; and the ledger's
+"correct by construction" is false when one branch closes a task and
+another retracts it. Each is stated beside its decision record.
+
+## v2.9.2 — the null byte (2026-10-29)
+
+One-line fix for the plugin directory's "files the validator couldn't
+inspect" hold. `server/src/memory/compaction.ts` carried a raw 0x00 byte
+inside the string literal of its pair-key separator, so the source and
+its compiled `server/dist/memory/compaction.js` read as binary to
+`file(1)` and to the directory scan. The byte is now the `"\u0000"`
+escape; the runtime string is identical, and no tracked text file holds
+a NUL (verified with a byte scan over `git ls-files`). The lockfile and
+file-count holds are unchanged and documented in the v2.9.1 entry.
+
+## v2.9.1 — the constitution (2026-10-29)
+
+Cairn's standing rules become derivations instead of reactions. Six
+axioms open ARCHITECTURE.md — what counts as the record of work, a
+mechanism, a directive, a recorded run, the owner's ground, and surface
+rent — and every ADR and hook header names the clause it derives from; a
+rule that derives from none is the finding. Two mechanisms follow from
+them: the close can re-run the owner-declared verify line and record what
+it saw beside what was claimed, and a headless run that keeps being
+refused is frozen by a circuit breaker. The run guard classifies git by
+effect instead of enumerating spellings. Six fixed call chains the verb
+prose narrated move into the server as parameters on existing tools. And
+the harness spine gains readers: setup installs an import so Claude Code
+loads it beside a project `CLAUDE.md`, and the drift check is red when
+any harness has no path to it. Cairn stays in the "refused at runtime"
+tier and says so — the refusals are derivable and auditable, not airtight.
+
+Tool count holds at 87. Suite 2256 → 2358. Footprint 13145 → 13142 of a
+13145 pin. Two config keys (`verify.rerun`, `auto.breaker`), one typed
+error code (`RUN_FROZEN`), no new tool.
+
+### directory listing
+
+- The plugin manifest carries the fields Anthropic's directory reads for
+  a listing: `displayName`, `documentationUrl`, `supportUrl`,
+  `privacyPolicyUrl`. New `PRIVACY.md` (what runs, what is stored
+  where, what leaves the machine, how to remove it) and `SECURITY.md`
+  (private reporting channel, supported versions) back the two policy
+  links; README gains "Try it" (four example prompts), "Data handling"
+  and "Support and troubleshooting". The `github_token` option's help
+  text no longer tells users to export an environment variable — the
+  plugin substitutes the option, so the shell variable was never read.
+- Every MCP tool declares an annotation `title` beside its
+  `readOnlyHint`/`destructiveHint` (directory policy §5.E).
+  Annotations never reach the model, so the footprint pin is unchanged.
+- `.gitignore` excludes the OS files the directory scan blocks on
+  (`.DS_Store`, `Thumbs.db`, `desktop.ini`, `__MACOSX`).
+
+### axioms
+
+- Six clauses open `docs/ARCHITECTURE.md` under `## Axioms`: tracker
+  truth, mechanism vs judgment, data not directive, a recorded run, the
+  owner's ground, surface is rent. They classify and prohibit nothing.
+  Every ADR carries a `derives:` line after its `removeWhen:`, every hook
+  header carries one, and the six render into the harness spine's shared
+  rules from the checkout. A sweep-surface test fails on a missing
+  `derives:`, an axiom no rule cites, a clause count that moved without
+  its pin, or a spine copy that disagrees with the source (#356).
+- "A sentence is not a mechanism" joins the shared rules and the spine:
+  every modal sentence is asserted by a named test or guard, measured as a
+  runtime field, or a dated claim; a new check is not done until it was
+  made red once; anything that produces context lists its readers (#394).
+- The spine has readers. `cairn-setup` installs a three-line `@AGENTS.md`
+  import at the top of `CLAUDE.md` (idempotent on the plain layout; the
+  claude target creates the file, other targets edit one if present) and
+  `--check` is red when a `CLAUDE.md` lacks a live import — fenced,
+  commented or indented lines do not count. `gen-agents --check` gains a
+  readers leg: per harness, the file it loads at session start and the
+  path from it to the fragment, run against every setup target in a
+  scratch project; a harness with no row, an empty table, or a present
+  load file with no path is red. Each row is a dated claim about that
+  harness. The root `AGENTS.md` is the dogfood copy and a fifth generated
+  surface (#398).
+
+### guards
+
+- The run guard classifies each git invocation by effect — discards-work,
+  moves-shared-ref, touches-owner-checkout, read-only by default — from
+  git's own option grammar (shortened long options, short clusters,
+  `+refspec`, whole-tree pathspecs) through a table the classifier reads
+  as data. Every refusal names the effect and the flag that caused it;
+  the everyday neighbours (`stash drop`, `branch -D`, a single-path
+  restore) stay allowed. The seventeen per-issue tests stayed green
+  unchanged through the rewrite, and an effects test joins them (#359).
+- Circuit breaker. Every refusal from the run, harness and leak guards
+  appends one digest-only row to a per-project refusals log — guard,
+  tool, effect, session, live run, sha256 of the input, never the command
+  or path. While a batch run is live its rows are counted; at
+  `auto.breaker` (default 3, `0` off) the guard writes the stop into the
+  run manifest itself. A frozen run's pushes are refused by the run guard;
+  its claims, closes and manifest moves return `RUN_FROZEN` from the
+  server, which posts the one plain-language comment the hooks cannot,
+  once. The outlook carries `frozen`. Guards fail open in both directions
+  (#358).
+
+### the close
+
+- `verify.rerun` (off by default): a close-kind ledger append re-runs the
+  owner-authored `verify:` line it reads out of the tracked PLAN.md at the
+  server's claim stamp — never the worker's evidence string, never a line
+  that changed since planning, never an untracked plan — under a minimal
+  environment and a timeout, and records `observed exit=<n> at=<when>`
+  beside the claimed evidence. A non-zero exit or a timeout marks the line
+  `observed-mismatch`, which `plan_check` reports and `distill_manifest`
+  lists; the close is never refused over it. The two `verify:` parsers
+  collapsed to one (#357).
+- `issue_close` takes the summary and the ledger block and composes the
+  close comment, measures, closes, writes the receipt and appends the
+  ledger line in one call through the shared append; the work verb's
+  close steps shrink to the verify run plus that call (#365).
+- `plan_check` reports `tdd-missing`, `evidence-missing` and
+  `closure-superseded` from the ledger through the shared parser; the
+  pre-phase-23 exemption is one server constant; the verify verb's three
+  ledger gates collapse to one step that defers to it (#366).
+
+### folds
+
+- `issue_create` takes a claim and creates-and-claims in one call; the
+  server resolves and stores the base commit at claim, so the work and
+  fast verbs drop their shell line (#369).
+- `continuity_checkpoint` takes a wave run id, composes notes and the
+  resume verb, writes the handoff and emits the outlook in one call; the
+  handoff-source enum has one definition (#370).
+- `trace_start` posts its started comment and seeds evidence, `trace_log`
+  mirrors cause-identified, `trace_close` writes the gotcha card with
+  derived provenance; the trace and verify verbs shrink accordingly
+  (#367).
+- `audit_record` dedups on intake (`dedup: true`) and files the surviving
+  critical and important findings with severity-first bodies, panel
+  summary, sweep label, outlook snapshot and agent cost (`file: true`);
+  `issue_attach` degrades to a fenced comment on trackers without
+  attachments; the audit verb's closing steps shrink to the flags (#368).
+
+### agents
+
+- Wave dispatch resolves each issue's model — an `agents.model` pin is
+  absolute, then a task's `model:` annotation, then a four-class rubric
+  (haiku / sonnet / opus / strongest), else inherit — on both dispatch
+  paths and prints the resolution table, so an all-session wave reads as
+  a choice. The planning rubric names a concrete tier per work class and
+  widens to the work verb; the wave brief carries the worker's resolved
+  model. Footprint unmoved (#406).
+
+### evals
+
+- A third corpus arm runs `/code-review` at its default finding limit;
+  11 of 11 graded on Claude Code 2.1.303 (recall 90%, precision 18%) and
+  recorded in ADR 0012's evidence. The scorer takes `--arms` so a one-arm
+  results directory scores honestly; run dir and cases live on the
+  `evals-archive` branch (#372).
+
+## v2.9.0 — the directory review (2026-10-17)
+
+The plugin-directory submission of 2.8.3 came back with three policy
+holds and nine warnings. This release clears everything that was ours to
+clear and ships the two phases that had been waiting above 2.8.3 in this
+file (the fifth seat, the ux seat). The shipped tree is 1081 → 628
+tracked files; the command shims stop pre-approving arbitrary shell; the
+GitHub token becomes a plugin option; the listing gets an icon. The one
+hold that remains — dependencies install from a lockfile — stays with the
+reviewer on purpose: a probe showed the dependency-free bundle the portal
+suggests cannot meet its 256 KiB per-file ceiling while zod 4 and the MCP
+server package are what they are.
+
+Tool count holds at 87. Suite 2207 → 2256. Footprint 13145 of a 13145
+pin. Default seats 8.
+
+### directory review (phase 27.5)
+
+- Every command shim's `allowed-tools` pre-approves only the read-only
+  git family (status, log, diff, rev-parse, describe, worktree list)
+  instead of bare `Bash`; anything that writes prompts once per session.
+  One generator line changed, 39 shims regenerated, and a sweep-surface
+  test now fails on any shim that regains bare Bash, `Bash(*)` or an
+  interpreter/runner wildcard (#400). The phase's own security audit then
+  caught the first cut pre-approving `git worktree` and `git branch` as
+  prefixes — which covers `worktree remove --force` and `branch -D` — so
+  the family narrowed to `worktree list` and dropped `branch` (no verb
+  uses it), and the run guard now refuses a forced worktree remove in
+  every session, red-first test included (#414).
+- `evals/`, `evals-corpus/` and `docs/superpowers/` leave the tree the
+  marketplace ships. They live on the orphan branch `evals-archive`
+  (byte-identical to the split point, with a README); CI checks it out
+  explicitly, the corpus generator and the live-suite test read it there
+  (or `$CAIRN_EVALS_ARCHIVE`) and fail loud or skip cleanly without it.
+  The three architecture diagrams are re-exported under 200 KB each. The
+  README carries the marketplace install line the validator asks for
+  (#403).
+- `.claude-plugin/icon.png`: a 1024×1024 cairn mark, with its SVG source
+  beside the diagrams, named by the manifest's `icon` field. The portal
+  fixes a listing's icon at its first save or submission, so the image
+  may only change on a re-listing (#401).
+- The GitHub tracker token is a sensitive plugin option (`github_token`)
+  substituted into the server's `GITHUB_TOKEN`; an empty value — what an
+  unset option becomes, verified on Claude Code 2.1.302 — is treated as
+  unset, so the environment variable and `gh auth` fallbacks hold for
+  cairn-setup harnesses and for plugin users who leave it blank. Other
+  trackers' token env keys are unchanged: vendor-own credentials the
+  reviewer confirms (#402).
+- Probe, verdict no-go: `node:sqlite` drops in behind the memory store's
+  seam in two files, but no split of the bundle gets every chunk under
+  the portal's 256 KiB line while zod 4 is 320 KiB minified on its own.
+  The lockfile hold stays with the reviewer; the standalone sqlite port
+  is recommended for phase 30 (#404).
+- Version surfaces bumped and the plugin resubmitted for review (#405).
+
+
+### the ux seat (phase 27, 2026-10-14)
+
+Cairn gains a UI/UX acceptance bar in its own vocabulary, borrowed by
+reference from zeeshani42's `ui-ux-designer` skill (MIT) and never
+vendored: the design agent reads an installed copy at its hi-fi stage, a
+seventh review seat judges whether a diff ships its states or only
+describes them, and `audit ui` holds a phase that declared no UI criteria
+to four rendered states. A second read, of dietrichgebert's ponytail
+(MIT), brings an eighth seat that asks whether code should exist at all
+and an audit mode that turns in-code deferral markers into tracker
+issues. Every borrowing file names the skill, the repo and the license
+and paraphrases; nothing upstream lands in the plugin. Surface flat; the
+one resident cost is a word in the audit command's blurb.
+
+Tool count holds at 87. Suite 2170 → 2207. Footprint 13137 → 13138 of a
+13145 pin. Default seats 6 → 8.
+
+#### seats
+
+- `ux` is the seventh default seat: minimal dose, review stage, gated on
+  a new `touches-ui` scope signal (css, scss, less, tsx, jsx, vue,
+  svelte, html, or a components / ui / pages / views / layouts path
+  segment; a server-only diff never fires it). Its lens is render, don't
+  describe — the four states, focus rings and tab order, contrast,
+  breakpoints that reflow — and a state that exists only in the PR body
+  is the finding. Unread render or source means unscored.
+- `lean` is the eighth: minimal dose, review stage, gated on `diff-large`
+  or `touches-server`. It asks the one question the other seats take as
+  given — should this code exist — down ponytail's ladder (need, already
+  in the codebase, standard library or platform, installed dependency,
+  one readable line, minimum code). Findings are priced as the cost of
+  the extra code, never as line count; the never-cut floor (trust-boundary
+  validation, data-loss handling, security, accessibility, anything the
+  user asked for) is stated in the seat. Lean asks necessity; `audit
+  simplify` keeps asking clarity.
+- The byte-identical fold of the first five seats is amended, not broken:
+  the roster may grow by signal-gated default seats, the five stay first
+  and unchanged, and the regression pin now checks that ordering plus the
+  signal gating of every seat after them. Under the default dispatch a
+  server-only diff convenes the five plus `lean`; a docs-only diff
+  convenes neither addition.
+
+#### agents
+
+- The design agent carries a hi-fi acceptance bar: at the prototype stage
+  it looks for an installed `ui-ux-designer` skill under the project then
+  the user skills root, reads it (never invokes it — its tool list is
+  unchanged), skips the skill's five-question gate because every answer
+  already lives in a session artifact, and holds each variant to the
+  skill's silent checklist — four rendered states, visible focus, a
+  reduced-motion alternative, real breakpoints. A described-not-rendered
+  state becomes a note, never a pick. Absent skill: one note, identical
+  behaviour.
+- The acceptance-testing agent checks the same four states when its walk
+  reaches a screen and hands a missing one to `audit ui`.
+
+#### audit
+
+- `ui` applies a floor when a phase declared no UI criteria: every shipped
+  screen or component renders Default, Loading, Empty and Error as views
+  (one file with a visible state toggle counts), one important finding
+  per missing state. A declared bar is never overridden; breakpoints stay
+  the `ux` seat's concern.
+- `debt [scope]` is a new mode: one documented grep for a comment opener
+  followed by a configured marker word and a colon (`shortcut`, `TODO`,
+  `FIXME`, `HACK`, `XXX` by default; `audit.debt.markers` in cairn.json
+  replaces the list, an empty list is refused). One finding per marker
+  with a dedup key as the first line of its detail, the `shortcut:
+  <limit>, <when to upgrade>` form parsed and a missing trigger reported
+  rather than invented. Report by default; `--apply` files every marker
+  as a `cairn:shortcut` issue — the mode's one deliberate exception to
+  minors staying in the record — updates the issue of a marker that moved
+  and closes the issue of one that vanished. `audit sweep` runs it as leg
+  five, report shape only. A fixture pair and a test run the documented
+  grep as written.
+
+### the fifth seat (phase 26.5, 2026-10-14)
+
+GitHub Copilot CLI joins the peers council as the fifth seat, and the
+council's own arithmetic changes with it: convergence now counts distinct
+labs, not seats, because Copilot reaches only labs already in the room
+(OpenAI through codex, Google through antigravity, Anthropic as the
+adjudicator). It is a fifth harness, not a fifth vendor — five seats, four
+labs. The hardening the survey said must land with it lands here too: every
+seat's child environment loses the tracker credentials, and a reviewer that
+dies with only an error on standard error is an incomplete seat, never a
+clean pass. Three platform-delta items from the 2.1.299 changelog read ride
+along, one of them a live-confirmed breakage.
+
+Tool count holds at 87. Suite 2130 → 2170. Footprint 13108 → 13137 of a
+13145 pin.
+
+#### peers
+
+- `copilot` is a provider. Its template runs the CLI contained by a flag
+  set — no questions, no auto-update, no custom instructions, no built-in
+  or cairn MCP servers, a 30-credit cap (the CLI's floor); contained runs
+  add view-only tools and a temp-dir lockout, and the prompt rides as the
+  last argument. Output is text, read by the shared fence parser; there is
+  no JSONL parser. Templates gain a `model` (flag + default), resolved from
+  `peers.<provider>.model` in cairn.json or the template default
+  `gpt-6.1-sol`; config load refuses a Claude model (the adjudicator's own
+  family) and refuses `auto` (not a pin — its default pick is a Claude
+  model). `peer_list` reports the resolved model. Drilled live on Copilot
+  CLI 1.0.96: a file beside the scratch folder under the system temp dir
+  was unreadable, a fenced finding parsed, a 150,000-character prompt ran
+  under the cap. The pinned default was not on the maintainer's plan; pin
+  one your plan serves.
+- Every seat declares the lab behind its model; Copilot's follows its
+  pinned id, opencode's is unknown because it picks its own. `peer_list`
+  reports `lab`, and the peers verb's convergence bar is three distinct
+  labs raising a claim — codex plus a gpt-pinned Copilot is one lab
+  speaking twice; an unknown lab never completes a cluster on its own.
+- Every seat is spawned with the server's environment minus tracker
+  credentials: each adapter's default token variable, both GitHub
+  spellings, the two Copilot trust-widening variables, and whatever
+  `tokenEnv` / `patEnv` / `apiKeyEnv` the project's configuration names
+  for the tracker and the docs connector. A seat's own credential is kept.
+  A parity test fails when an adapter declares a credential default the
+  drop list lacks.
+- Peer output records carry the exit code the run returned. A seat whose
+  round-one exit was non-zero with no findings raised is an incomplete
+  seat beside the silent ones: status names it with the tail of its
+  standard error, close refuses over it unless the caller accepts degraded
+  coverage, and then stamps the seat and its reason into the record. A
+  seat that spoke and then died keeps its findings; a clean exit with
+  nothing to say is still clean.
+
+#### agents
+
+- Both plugin agents name cairn's tools by full MCP id. Claude Code 2.1.299
+  resolves an agent's tool list against the named MCP server only, so the
+  bare names granted nothing: a live probe found the acceptance-testing
+  agent running with Read and Bash alone while the server sat connected.
+  A test holds every entry to a registered tool; a headless run of the
+  plugin proved both agents see their tools again.
+
+#### evals
+
+- The review-corpus scorer counts a run with no grader results as errored,
+  per arm and per case, keeps it out of both rates, says how many runs
+  were graded, and exits non-zero. Since 2.1.299 the platform scores such a
+  run zero and fails the suite; the scorer now agrees instead of hiding
+  the run. The corpus arms keep the subagent tool enabled on purpose.
+
+#### context
+
+- The compaction sunset line names idle compaction (2.1.299) as a second
+  main-session trigger the drift report cannot observe; the remaining gap
+  — no plugin can declare a main-session threshold — stays explicit.
+
+## v2.8.3 — the error flag (2026-10-12)
+
+A small release that makes one retro signal real. The observation
+buffer the retro verb reviews records every Edit, Write and Bash call
+with an error flag, and across the thirteen waves of v2.8.2 — full of
+failing probes and red test runs — not one row ever carried it. Claude
+Code emits no PostToolUse event for a tool call that fails; the failure
+arrives as a separate PostToolUseFailure event, which nothing listened
+to. So the flag was structurally false, and any lesson card that cited
+error churn from the buffer would have been fabricated.
+
+Both fixes are hook-side only. No server change, no new tool.
+
+Tool count holds at 87. Suite 2120 → 2124.
+
+### hooks
+
+- The observe hook is wired to PostToolUseFailure beside PostToolUse,
+  on the same Edit, Write and Bash matcher. A failed call now lands in
+  the buffer as an error row carrying the tool name and target, as the
+  flag always promised. The script's header says which event carries
+  which flag (#323).
+- An interrupted call is a cancellation, not an error. The owner
+  pressing Escape on a running tool arrives as a failure event with
+  is_interrupt set; that row keeps the error flag false and carries an
+  interrupted flag instead, so retro never reads a cancellation as
+  error-to-retry churn (#324).
+
+### audit
+
+- A phase-scoped security record (security-25-7) now stands beside the
+  surface records; the two residual minors it carries are in the record,
+  not the tracker: phase 25.7's acceptance shape promised a sweep
+  manifest delta that was never computed, and the harness guard's
+  documented interpreter blind spot was confirmed live on a protected
+  file by the #323 fix itself.
+
+## v2.8.2 — the hardening (2026-10-11)
+
+The second sweep, taken on v2.8.1, filed twenty findings against the
+two PreToolUse guards. This release closes them and then keeps going:
+after each fix wave the security surface was re-audited, every
+important finding was put to two independent votes, and the survivors
+became the next wave. Ten passes later the re-audit came back with no
+important finding left. Forty-eight issues closed in thirteen waves,
+three of them regressions this release introduced and caught itself.
+
+The guards now share one shell reader, and most of what changed is in
+how that reader sees a command line: wrappers, runners, substitutions,
+heredocs, folders reached by `cd` or `git -C`, and the fields an MCP
+tool carries a command or a path in. What the guards still don't see
+is written in their headers and in the runbook, finding by finding.
+
+Tool count holds at 87. Suite 1735 → 2120.
+
+### guards
+
+- One shell reader (`hooks/scripts/shell-words.mjs`) serves both
+  guards. It reads shell keywords and grouping, case-folded command
+  names, wrapper flags, program runners (`xcrun`, `arch`, `strace`,
+  `runuser`, `pkexec` and their kin), and a backstop for runners it
+  doesn't know: a leading program the guards haven't met has its later
+  words judged as the command, with print-only programs exempt. `man`,
+  `gh`, `rg`, `sort` and the pager variables have their one
+  program-running option modelled rather than a blanket pass.
+- Substitutions are one word. An unquoted `$(…)`, backtick, `$((…))`
+  or process substitution no longer splits a line, so the literal
+  target after it is seen; each body is read as a command line of its
+  own, including inside an unquoted heredoc body, which is otherwise
+  data. Nesting is capped at eight levels and anything deeper is
+  refused unread. A deeply nested line that used to run the guard for
+  seconds now takes about 90 ms.
+- The run guard judges the repo a git command acts on, following `cd`,
+  `git -C` (with `~`, `$HOME` and `$PWD` expanded), `--git-dir`,
+  `--work-tree` and `GIT_DIR`. A gated push must stand alone on its
+  line: a commit or ref move earlier on the same line, which the stamp
+  can't have covered, is refused. Shortened git options, separate
+  option values, glob and matching refspecs, short destinations and
+  push settings all meet the ship gate.
+- The harness guard protects its trust anchors: the live plugin copy,
+  the ship-gate stamps and run manifests, the `.claude` and `.cursor`
+  hook folders, the skill, agent and command folders at home and in
+  the project, every MCP config, the scripts those settings and MCP
+  configs launch (hook commands, the status line, server entry points
+  outside the project, including the `uv --directory` quickstart
+  shape), and `~/.claude/hooks`. It refuses `claude mcp add`, `claude
+  plugin install|enable|disable|init`, `claude import` and the same run
+  through `npx`. Tree-creating commands (`git clone`, `worktree add`,
+  `submodule add`, `git init`, `gh repo clone`, `npx degit`, `npm
+  create`) judge their destination like a `mkdir`. Writes through
+  `find -exec`, `xargs`, `su -c`, archives, patches and downloads are
+  seen; paths match in any letter case; a `cd` the guard can't follow
+  fails closed.
+- MCP tools meet both guards. The hook matchers widen to `mcp__.*`;
+  a command field (`command`, `cmd`, `shell_command`, an exec array,
+  `script`, shell `code`, a `commands` list, with its folder field)
+  goes through the run guard, and a path field on a tool whose name
+  says it writes goes through the harness guard. Tools that run code
+  in another language, and text sent to a running process, are out of
+  scope and documented as such. Cursor's `preToolUse` adapter forwards
+  MCP calls to both guards and fails closed.
+- Refusals stop coaching the override: the owner-only variables are
+  named, never given as a paste-ready prefix. An unreadable ship-gate
+  stamp refuses rather than skips.
+
+### the sweep
+
+- A sweep manifest reads `unchecked` for a leg it didn't re-run, and
+  refuses findings it can't attribute. Phase numbers resolve by
+  milestone title, not id. README, CHANGELOG and LICENSE edits no
+  longer stale a security audit. `peer_run` enforces `execCapable` and
+  leak-scans outgoing input. `verify` requires every phase issue closed.
+
+### docs
+
+- The runbook's guard sections, the server reference and the guard
+  headers describe what each guard reads and, in a "not seen" list,
+  what it doesn't. The harness matrix marks Cursor as guarded.
+
+## v2.8.1 — the fixes (2026-10-03)
+
+The first real sweep, taken on v2.8.0, filed eleven findings against
+cairn itself. This release closes all of them through the normal work
+lifecycle, so the next sweep can report them as fixed. Most were rules
+the instructions stated and nothing enforced: git commands that destroy
+work, pushes that skip ship's gate, a docs publish that never asked
+first. One regression found mid-fix (a quoted command substitution the
+new parser read as plain text) is closed here too.
+
+Some of these fixes narrow a gap rather than seal it, and they say so
+below. The follow-ups are filed.
+
+Tool count holds at 87. Suite 1680 → 1735.
+
+### guards
+
+- The run guard now refuses `git reset --hard` and every form of
+  force-push (`--force`, `-f` alone or clustered, `--force-with-lease`,
+  `--force-if-includes`, a `+refspec`) in every session, not only during
+  a run. It reads the command as shell words, so a commit message that
+  mentions a reset passes, and a command substitution inside double
+  quotes is checked as a command of its own. `CAIRN_ALLOW_DESTRUCTIVE_GIT=1`
+  overrides, in the session env or as the command's leading assignment.
+- While a run is live, a `git push` from any worktree is refused unless
+  the run's manifest grants push authority over its phases. There is no
+  override: push authority is the owner's decision at the staging gate.
+  The manifest doesn't record which phase a push carries, so this checks
+  that authority was granted, not that it covers the push.
+- ship's "never push with flagged drift" is now enforced, not just
+  stated. `plan_drift` stamps the commit it checked and whether it came
+  out clean, and an agent push to the default branch is refused when
+  that stamp is missing, dirty, or for a different commit. Other branches
+  are untouched. `CAIRN_ALLOW_UNSHIPPED_PUSH=1` overrides. ship re-runs
+  the drift check after its own last commit so its stamp stays current.
+  The open-issues half of ship's gate is still enforced by procedure,
+  not by the hook.
+- The harness guard now sees through wrapper flags (`sudo -u root tee`,
+  `env -i FOO=1 rm`, `nice -n`, `timeout`, `xargs` and their kin) and
+  through `bash -lc`, where only a literal `-c` used to count. Wrapper
+  coverage is a known list; `su`, `find -delete`/`-exec` and paths fed
+  to `xargs` on stdin are not yet on it.
+- `docs_publish` refuses unless passed `confirm: true`, and the docs and
+  summit procedures pass it only on the owner's explicit yes. Summit's
+  "never auto-publish" rule now has something behind it.
+
+### the sweep
+
+- A sweep manifest now answers to its legs. A finding the leg refuted is
+  refused, a serious security finding needs that leg's two panel votes,
+  and a leg record path outside the project's audit folder, a symlink or
+  a non-regular file is refused instead of read. A finding reworded in
+  both its title and its scenario still links to no leg; that gap is
+  narrowed, not closed.
+- A sweep manifest no longer credits seats a second time for findings
+  its legs already credited, which had doubled every sweep finding's
+  survival count.
+- `ledger_append` gains an evidence-only line that makes no closure
+  claim. A later evidence line for the same task supersedes an earlier
+  closure line, so a misattributed close can be corrected without
+  rewriting an append-only ledger. `audit tests` now logs this way.
+
+### docs
+
+- The server README's tool list (71 → 87) and the runbook's tool
+  catalog (79 → 87) are current.
+
+## v2.8.0 — the sweep (2026-10-02)
+
+Milestone v8 closes on its capstone: one audit mode that runs every
+improvement check cairn has across a whole project, files only what
+survives a refutation panel, and writes a dated baseline so the next
+sweep says what is new, what persisted, what got fixed, and what came
+back. Underneath it, cairn stops recording numbers it cannot stand
+behind. Durations are measured, not asked for. Eval results that split
+across runs say "inconclusive" instead of averaging into a score.
+Context cost is metered where it lands. And the guard that protects
+cairn's own configuration now refuses what a command writes, not what it
+happens to mention.
+
+Two claims are deliberately not made here. The sweep ships tested but
+not yet run in anger: its first real baseline is taken on this release,
+because the comparison it reports lives in this release's server. And
+the context-economy experiment that would have halved average context
+was killed at its gate, so nothing in this release claims that saving.
+
+Tool count moves 86 → 87. Suite 1541 → 1680.
+
+### the sweep
+
+- `audit sweep` runs every leg in order (security, the security surface
+  check, tests, docs, plans, simplify, memory, and the milestone view
+  last), each through its own closing discipline unchanged. Duplicates
+  collapse, a refutation panel judges every serious finding, and only
+  survivors reach the tracker, labelled with the leg that found them.
+- One dated manifest per sweep records the cairn version, the commit, and
+  every leg's record. Against the previous manifest it classifies each
+  finding as new, persisting, fixed, or regressed, matching by exact title
+  first and then by the failure the finding describes, so a reworded
+  finding is still the same finding. The first sweep says "first
+  baseline".
+- The report is one prioritized backlog (regressions first, then new,
+  then persisting, criticals ahead of the rest), followed by the latest
+  eval verdicts with any failing gate first, then approximate spend, and
+  it updates the portfolio board. `--fix` stages patches leg by leg, never
+  across legs. "Rescan this project" routes here through the confirm
+  path.
+- The security surface check now maps every imperative rule (never, do
+  not, always, must) in the project's instructions, procedures and hook
+  prose to the deterministic controls that could back it, and reports the
+  rules nothing enforces. The scan only proposes candidates; the auditor
+  decides whether a control truly backs a rule. Run on cairn itself, it
+  found 58 of 258 rules with nothing behind them.
+- Every decision record, server gate and hook now states what would make
+  it unnecessary, in a `removeWhen:` line, or says `never` and why. The
+  milestone audit lists the ones whose condition has plausibly arrived,
+  for a human to judge. Harness components exist because the model or
+  the platform cannot do something yet; this writes the expiry down.
+
+### eval semantics
+
+- Every behavioural eval case is now either regression (must pass every
+  run, and is a gate) or capability (an improvement target that never
+  blocks). One mixed score produced wrong priorities.
+- A verdict script reads a run's results and reports PASS, FAIL, or
+  INCONCLUSIVE when runs split. A split is "we don't know yet, add runs",
+  not a fractional score. A case's tier comes from its current definition,
+  so results recorded before tiers existed still read correctly. The
+  nightly lane prints the verdicts and stays advisory until a variance
+  baseline exists.
 
 ### measured actuals
 
@@ -55,6 +912,42 @@ suite grows 1605 → 1630.
   retry.
 - The work, trace, fast and audit procedures open claims with "Starting
   now." and no longer ask the agent for a time spent.
+
+
+### context economy
+
+- What a piece of work costs in context is now measured where it lands.
+  Every turn's residency is accounted per producer, rent is attributed to
+  the work item that spent it, and one tool reports the layer's whole
+  bill. Compaction boundaries are detected along with what crossing them
+  cost.
+- A first symptom detector looks for evidence a compaction hurt, such as
+  a repeated question or a re-read file. Its first version could not fire
+  at all, because almost all real user prose arrives as a bare string;
+  that is fixed and proven. A symptom is strong evidence of harm, but its
+  absence is weak evidence of safety, so no gate keys on zero symptoms.
+- The experiment to halve average context by compacting far earlier was
+  run and killed: at that threshold ordinary work became unworkable. The
+  predicted saving is withdrawn and nothing should cite it. The reporting
+  that would catch a threshold creeping back stays.
+- The context-footprint guard now counts tool schemas it was silently
+  omitting, and no longer counts header comments as if they were injected
+  into every session. Its budget is re-pinned to each corrected reading,
+  never loosened by a fix.
+
+### fixes
+
+- The guard protecting cairn's own configuration refused ordinary reads:
+  any `>` counted as a write, including `2>/dev/null`, and any mention of
+  a protected path counted as an edit. It now finds what a command
+  actually writes (redirect targets, and the files that cp, mv, rm, tee,
+  sed -i and their kin change) and refuses only those. Quoted text and
+  heredoc bodies are data. Writes passed as a string to another shell,
+  which the old check missed, are now caught.
+- The portfolio board and the budget ledger read only the live segment of
+  the metrics log, so after the first rotation the board's spend appeared
+  to drop and the ledger could charge a run for a session that started
+  before it. Both now read every segment.
 
 ## v2.7.0 — the guards (2026-09-20)
 

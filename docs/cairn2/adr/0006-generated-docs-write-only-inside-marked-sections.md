@@ -4,13 +4,16 @@ sidebar_position: 6
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # 0006 — Generated docs write only inside marked sections
 
 Date: 2026-09-01. Status: accepted.
+
+removeWhen: never — hand-written prose deserves a structural guard against any writer, script or model. A writer that follows instructions better makes a clobber rarer, not acceptable.
+derives: axiom 5 (owner-ground)
 
 ## Context
 

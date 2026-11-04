@@ -4,13 +4,16 @@ sidebar_position: 2
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.7.0"
+  cairn_version: 14
+  cairn_release: "2.9.2"
 ---
 
 # 0002 — Markdown crosses the SPI; adapters own conversion
 
 Status: accepted (v2, 2026-07-24)
+
+removeWhen: every supported wiki product accepts markdown on its publish API and renders it faithfully, so no adapter needs a converter.
+derives: axiom 2 (mechanism-vs-judgment)
 
 ## Context
 
