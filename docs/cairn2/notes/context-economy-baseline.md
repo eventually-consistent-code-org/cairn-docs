@@ -4,8 +4,8 @@ sidebar_position: 2
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 6
-  cairn_release: "2.9.2"
+  cairn_version: 7
+  cairn_release: "2.9.3"
 ---
 
 # Context economy — phase A baseline

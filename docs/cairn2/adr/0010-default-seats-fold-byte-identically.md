@@ -4,8 +4,8 @@ sidebar_position: 10
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.9.2"
+  cairn_version: 10
+  cairn_release: "2.9.3"
 ---
 
 # 0010 — Default seats fold into review, byte-identically

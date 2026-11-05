@@ -4,8 +4,8 @@ sidebar_position: 7
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 14
-  cairn_release: "2.9.2"
+  cairn_version: 15
+  cairn_release: "2.9.3"
 ---
 
 # How cairn compares — mechanisms, not vocabulary
@@ -23,7 +23,7 @@ or wrong, [open an issue](https://github.com/eventually-consistent-code-org/cair
 repeat a competitor's unverifiable marketing claims, and we expect the
 same courtesy.
 
-Cairn's column reflects version <!-- auto:version -->2.9.2<!-- /auto:version -->:
+Cairn's column reflects version <!-- auto:version -->2.9.3<!-- /auto:version -->:
 <!-- auto:verb-count -->39<!-- /auto:verb-count --> verbs,
 <!-- auto:tool-count -->87<!-- /auto:tool-count --> typed MCP tools, 2124
 passing tests, <!-- auto:tracker-count -->8<!-- /auto:tracker-count --> tracker

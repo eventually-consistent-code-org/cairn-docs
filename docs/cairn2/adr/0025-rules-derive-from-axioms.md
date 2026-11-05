@@ -4,8 +4,8 @@ sidebar_position: 25
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.9.2"
+  cairn_version: 5
+  cairn_release: "2.9.3"
 ---
 
 # 0025 — Rules derive from axioms; a rule that derives from none is the finding

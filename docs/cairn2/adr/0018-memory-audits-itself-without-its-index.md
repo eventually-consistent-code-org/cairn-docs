@@ -4,8 +4,8 @@ sidebar_position: 18
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 6
-  cairn_release: "2.9.2"
+  cairn_version: 7
+  cairn_release: "2.9.3"
 ---
 
 # 0018 — Memory's self-checks read files and git, never the search index

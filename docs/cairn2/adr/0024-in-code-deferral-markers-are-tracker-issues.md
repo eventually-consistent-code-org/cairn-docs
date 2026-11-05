@@ -4,8 +4,8 @@ sidebar_position: 24
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 5
-  cairn_release: "2.9.2"
+  cairn_version: 6
+  cairn_release: "2.9.3"
 ---
 
 # 0024 — In-code deferral markers are tracker issues

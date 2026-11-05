@@ -4,8 +4,8 @@ sidebar_position: 35
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 1
-  cairn_release: "2.9.2"
+  cairn_version: 2
+  cairn_release: "2.9.3"
 ---
 
 # 0035 — Every refused shape has an allowed twin, and holds from a nested working directory

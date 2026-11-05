@@ -4,8 +4,8 @@ sidebar_position: 2
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 14
-  cairn_release: "2.9.2"
+  cairn_version: 15
+  cairn_release: "2.9.3"
 ---
 
 # cairn Runbook — the complete operating manual
@@ -317,6 +317,20 @@ didn't pass. A failed verify is a failed verify.
 
 The pre-push gate:
 
+0. Branch protection — `config_probe` reads what the repository enforces
+   on its default branch and ship says when the push gate is the guard
+   alone. The run guard sees only the agent's Bash tool; a plain
+   terminal, a browser, a token in a script never pass through it, so
+   the gate is only as real as the rule at the service where every route
+   ends. The probe looks for four rules — `pull_request`,
+   `required_reviews:<n>`, `non_fast_forward` (no force push),
+   `deletion` — from the rulesets endpoint first, legacy branch
+   protection second. No `pull_request` rule: one line, "the push gate
+   is the guard alone; no ruleset on <default>", and ship continues —
+   measured, not blocking, because an unprotected repository can be a
+   choice. A read that fails is reported as `unreadable: <reason>`,
+   never as an empty rule list. GitHub only, as of 2026-11-04 (#485);
+   other trackers report nothing here.
 1. Drift check — anything flagged: stop and report. Do not push.
 2. Every phase with a VERIFICATION.md must show all its issues closed
    (spot-checked live) — any still open: stop. A stale `planned` roadmap
@@ -324,7 +338,10 @@ The pre-push gate:
    treated as a failed gate. Ship never writes `shipped (v<N>)` into a
    row — that flip is `summit`'s, at the milestone archive.
 3. Engineer mode only: no cairn-authored PR may still be awaiting human
-   review. Human review is the merge gate; ship never overrides it.
+   review. Human review is the merge gate; ship never overrides it —
+   and that sentence rests on the default branch's ruleset, not on
+   ship: with no `pull_request` rule there, step 0's line is the honest
+   version of it (dated 2026-11-04, #485).
 4. Docs catch-up: any verified phase the docs-drift report still flags
    gets a per-phase distill pass — CHANGELOG entry, phase ADRs, marked
    ARCHITECTURE sections — committed before the push. Advisory: a docs
@@ -890,7 +907,11 @@ are members, and writes `cairn-workspace.json` at the root — nothing else;
 each member keeps its own tracker-first setup untouched. `focus <member>`
 repoints EVERY verb at that member — plan, work, issue calls, banner,
 handoff — because they all resolve through the same project dir; nothing
-downstream needs to know a workspace exists. `dispatch` decomposes a goal
+downstream needs to know a workspace exists. That repoint reaches a
+session launched at the workspace root (or in a folder no member owns);
+a session launched inside a member stays in that member whatever the
+focus says, and the tool result says which happened (`focusApplied`,
+#487). `dispatch` decomposes a goal
 into session-sized workstreams, queues them on the board, and prints
 copy-pasteable per-session opener lines — it NEVER auto-spawns sessions.
 The claim/update/done lifecycle runs from inside whichever session picked up
@@ -1236,8 +1257,22 @@ wires a project for Grok Build, GitHub Copilot CLI, Codex, Gemini CLI, or
 Cursor:
 
 ```bash
-node setup/cairn-setup.mjs <harness> [--project <dir>]
+node setup/cairn-setup.mjs <harness> [--project <dir>] [--git-hooks]
 ```
+
+`--git-hooks` adds the git layer of the ship gate — a `pre-push` hook
+that refuses an unshipped default-branch push from any process in the
+checkout, not only the one harness that runs the run guard (section 10,
+"The git layer"). Opt-in, because it writes `core.hooksPath` into the
+repository's config.
+
+Whichever harness drives it, cairn acts as you — the tracker token, the
+push credential, the browser session and any connected account are
+yours, `config_probe` says so as `identity: "owner"`, and so the runtime
+half is yours to set up rather than cairn's to check: the shell and the
+browser a cairn session uses should hold no signed-in session the task
+does not need (ADR 0037; a sentence, dated 2026-11-04, with no mechanism
+behind it — cairn cannot see what a browser profile holds).
 
 Three things happen everywhere: a `cairn` entry merges into the project's
 `.mcp.json` (never clobbering yours), the generated verb-registry fragment
@@ -1842,11 +1877,12 @@ push, PR, review, merge. No locking machinery, on purpose.
 ### Workspaces
 
 `basecamp` (section 3) adds the multi-project layer: a workspace file
-naming member projects, a focus that repoints every verb, a dispatch board
-for parallel workstreams, and the focus-discipline rules that keep N
-parallel sessions from trampling each other. The compatibility guarantee is
-absolute: with no workspace file anywhere above your launch directory,
-nothing changes — every single-project setup behaves identically.
+naming member projects, a focus that repoints every verb of a root-launched
+session (a session launched inside a member is never redirected, #487), a
+dispatch board for parallel workstreams, and the focus-discipline rules that
+keep N parallel sessions from trampling each other. The compatibility
+guarantee is absolute: with no workspace file anywhere above your launch
+directory, nothing changes — every single-project setup behaves identically.
 
 ### Import and unplanned work
 
@@ -1883,6 +1919,8 @@ nothing.
 | `drift.staleDays` | positive integer | `5` | Days of silence before `plan_drift` calls work stale |
 | `ship.confirm` | boolean | `true` | Ship's push-or-hold question before anything leaves the machine; `false` restores the silent push |
 | `auto.breaker` | integer ≥ 0 | `3` | Guard refusals inside a live headless batch run that freeze it (the circuit breaker, beside the run guard below). `0` turns the freeze off; every refusal is still logged. Copied into the run manifest at staging and read from there — a mid-run edit governs the next run only (#433) |
+| `guards.writers.readOnly` | string[] (agent types, or globs over them) | `["cairn-uat"]` when the key is absent | The write guard (#454, dated 2026-11-04): a subagent whose hook payload carries one of these `agent_type` values may write nothing under the project — Edit, Write, NotebookEdit and redirect-shaped shell writes are refused, naming the type, the path and this key. The main session carries no `agent_type` and is never limited; a harness that sends none is unchanged. A list given here replaces the default, never merges with it; `[]` lifts every type |
+| `guards.writers.paths` | `{ "<type or glob>": string[] }` (root-relative path globs) | `{ "cairn-designer": [its draft folder] }` when the key is absent | The same guard's path grants: a listed type may write only under its globs (`src/**`; a glob naming a folder covers everything under it). `readOnly` wins over a grant for the same type; a type neither names is allowed. Both keys are the owner's — #281 lists them owner-only at `config_set` |
 | `audit.debt.markers` | non-empty string[] | `["shortcut", "TODO", "FIXME", "HACK", "XXX"]` | The comment words `audit debt` greps for (each followed by a colon). An override replaces the list, never merges; an empty list is refused at load |
 | `leakGuard.enabled` | boolean | `true` | The commit-time leak guard hook, and the scan `peer_run` makes of outgoing input |
 | `leakGuard.allow` | string[] | `[]` | Path globs exempt from the guard |
@@ -2081,6 +2119,46 @@ Two more rules close the ways around the gate:
 Other branches and tags are untouched. The refusal points at
 `/cairn:ship`, which runs the drift check and then pushes. This is the
 hook half of ship's "never push with flagged drift".
+
+**The git layer** (dated 2026-11-04, #456). The run guard sees a push
+only when it goes through the Bash tool of a harness that runs the
+hook; a human's own terminal, a harness wired for skills but not hooks
+(Codex, Gemini, Copilot, OpenCode, Zed), and a script that shells out to
+git all push past it. `cairn-setup <harness> --git-hooks` is the opt-in
+second layer, never the default: it writes `core.hooksPath` into the
+repository's config, which is the owner's ground, so the flag is the
+consent. It installs a `pre-push` hook under the cairn home folder's
+`githooks/` directory, points `core.hooksPath` at it (an absolute path,
+local to that `.git/config`, so every worktree of the repository runs
+it), and copies the hook's script beside the verb helpers. The hook is a
+thin caller: the effect comes from the shared effect table, the stamp
+and the default-branch names from the shared hook library, the refusal
+is the run guard's own text, and the same `CAIRN_ALLOW_UNSHIPPED_PUSH`
+escape is honoured, said aloud on stderr, and never spelled as a prefix.
+A project's own `pre-push` survives below the cairn markers and still
+reads its refs from stdin; a `core.hooksPath` already set is respected
+(the hook goes into that folder, the setting stays); live hooks in
+`.git/hooks` refuse the install in one line rather than go silent under
+a new path. `--check` reports whether the hook is installed and whether
+git still runs hooks from there, and `plan_drift` measures the layer as
+`guardReach.gitLayer` (`present`, `absent`, `unknown`), a field beside
+the flags and never one of them, which ship mentions in one line. The
+hook's readers: any process running git in the checkout; its store: the
+hook script; its signal: the refusal text on stderr. Asserted:
+`server/test/setup.test.ts` and `server/test/sweep-surface.test.ts`
+"(#456)", pushes made from a plain shell with every harness variable
+stripped.
+
+What no local layer sees: `git push --no-verify` skips every pre-push
+hook, as does a clone whose config never got the `hooksPath`. The only
+layer that survives `--no-verify` is a rule at the host, and that is a
+sentence cairn can state, not a mechanism it owns: on GitHub, a ruleset
+or branch protection on the default branch (`pull_request`,
+`non_fast_forward`, `deletion` are the rules `config_probe` reads for
+ship's step 0, #485); on GitLab, a protected branch with "Allowed to
+push and merge" set to no one and merge requests required. Where that
+rule is missing, ship's "the push gate is the guard alone" line is the
+honest version of the gate.
 
 **While a batch run is live** — a run manifest for this project reads
 `running` — two more rules apply. A batch run works inside its own

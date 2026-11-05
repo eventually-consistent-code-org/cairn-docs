@@ -4,8 +4,8 @@ sidebar_position: 27
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 2
-  cairn_release: "2.9.2"
+  cairn_version: 3
+  cairn_release: "2.9.3"
 ---
 
 # 0027 — Per-machine state is keyed by what it is about: the repository for knowledge, the worktree for a task in flight

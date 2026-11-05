@@ -4,8 +4,8 @@ sidebar_position: 23
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 5
-  cairn_release: "2.9.2"
+  cairn_version: 6
+  cairn_release: "2.9.3"
 ---
 
 # 0023 — A borrowed bar is read by reference and carried as data

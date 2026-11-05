@@ -4,8 +4,8 @@ sidebar_position: 13
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 9
-  cairn_release: "2.9.2"
+  cairn_version: 10
+  cairn_release: "2.9.3"
 ---
 
 # 0013 — Seats declare where they convene

@@ -4,8 +4,8 @@ sidebar_position: 3
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 14
-  cairn_release: "2.9.2"
+  cairn_version: 15
+  cairn_release: "2.9.3"
 ---
 
 # 0003 — Idempotent publish: identity is title + ancestry

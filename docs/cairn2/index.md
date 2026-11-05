@@ -3,8 +3,8 @@ title: "cairn2"
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 15
-  cairn_release: "2.9.2"
+  cairn_version: 16
+  cairn_release: "2.9.3"
 ---
 
 # cairn 2.0
@@ -99,7 +99,7 @@ git PRs.
 generated from the routing table.
 The routing table is complete: the reserved verb set is now empty.
 
-**Server:** <!-- auto:tool-count -->87<!-- /auto:tool-count --> typed MCP tools, <!-- auto:test-count -->2653<!-- /auto:test-count --> passing tests — counts move with each
+**Server:** <!-- auto:tool-count -->87<!-- /auto:tool-count --> typed MCP tools, <!-- auto:test-count -->2924<!-- /auto:test-count --> passing tests — counts move with each
 tier and are measured in CI (env-gated live-backend
 suites skip without creds) — <!-- auto:deps -->four dependencies
 (`@modelcontextprotocol/client`, `@modelcontextprotocol/server`,

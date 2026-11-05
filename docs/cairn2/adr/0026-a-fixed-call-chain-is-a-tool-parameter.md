@@ -4,8 +4,8 @@ sidebar_position: 26
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 4
-  cairn_release: "2.9.2"
+  cairn_version: 5
+  cairn_release: "2.9.3"
 ---
 
 # 0026 — A fixed call chain is a parameter on a tool, not a step in the prose

@@ -4,8 +4,8 @@ sidebar_position: 30
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 2
-  cairn_release: "2.9.2"
+  cairn_version: 3
+  cairn_release: "2.9.3"
 ---
 
 # 0030 — A rate-limited peer seat is skipped and recorded, never a failed run

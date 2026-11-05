@@ -4,8 +4,8 @@ sidebar_position: 22
 mdx:
   format: md
 sidebar_custom_props:
-  cairn_version: 5
-  cairn_release: "2.9.2"
+  cairn_version: 6
+  cairn_release: "2.9.3"
 ---
 
 # 0022 — A seat is counted by its lab, and a seat's model is the owner's pin
